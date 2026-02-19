@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساحتنا الخاصة</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Tajawal', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* الشاشات */
+        .screen {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: none;
+            margin: 10px 0;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        /* العناصر */
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            margin: 8px 0;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin: 8px 0;
+            transition: 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #48bb78;
+        }
+        
+        .btn-secondary:hover {
+            background: #38a169;
+        }
+        
+        .btn-danger {
+            background: #f56565;
+        }
+        
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+        
+        /* المساحات */
+        .room-card {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        .room-card:hover {
+            border-color: #667eea;
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .room-code {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        
+        /* المحادثة */
+        .chat-box {
+            background: #f7fafc;
+            border-radius: 15px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            margin: 15px 0;
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 15px;
+            margin: 8px 0;
+            word-wrap: break-word;
+        }
+        
+        .message.sent {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.received {
+            background: white;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .message small {
+            display: block;
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+        }
+        
+        .input-area input {
+            flex: 1;
+            margin: 0;
+        }
+        
+        .input-area button {
+            width: auto;
+            margin: 0;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .info-box {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .info-box .code {
+            font-size: 24px;
+            letter-spacing: 5px;
+            color: #667eea;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <!-- شاشة تسجيل الدخول -->
+        <div id="loginScreen" class="screen active">
+            <h1>🌟 مساحتنا الخاصة</h1>
+            
+            <div style="margin: 25px 0;">
+                <input type="text" id="loginName" placeholder="الاسم" value="">
+                <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" value="">
+            </div>
+            
+            <button class="btn" onclick="login()">دخول</button>
+            <p style="text-align: center; margin: 15px; color: #718096;">أو</p>
+            <button class="btn btn-secondary" onclick="quickLogin()">دخول سريع (للاختبار)</button>
+        </div>
+
+        <!-- الشاشة الرئيسية -->
+        <div id="mainScreen" class="screen">
+            <div class="header">
+                <div>
+                    <h2>مرحباً <span id="userName"></span></h2>
+                    <p style="color: #718096;" id="userEmail"></p>
+                </div>
+                <button class="btn btn-danger" style="width: auto;" onclick="logout()">خروج</button>
+            </div>
+
+            <!-- إنشاء مساحة جديدة -->
+            <div style="margin: 20px 0;">
+                <h3>➕ إنشاء مساحة جديدة</h3>
+                <input type="text" id="newRoomName" placeholder="اسم المساحة (مثال: أنا وصديقي)">
+                <button class="btn" onclick="createRoom()">إنشاء المساحة</button>
+            </div>
+
+            <!-- الانضمام لمساحة -->
+            <div style="margin: 20px 0;">
+                <h3>🔑 الانضمام لمساحة موجودة</h3>
+                <input type="text" id="joinRoomCode" placeholder="كود المساحة" maxlength="8">
+                <button class="btn btn-secondary" onclick="joinRoom()">انضمام</button>
+            </div>
+
+            <!-- قائمة المساحات -->
+            <h3>📁 مساحاتي الخاصة</h3>
+            <div id="roomsList"></div>
+        </div>
+
+        <!-- شاشة المساحة -->
+        <div id="roomScreen" class="screen">
+            <div class="header">
+                <button class="btn" style="width: auto;" onclick="backToRooms()">↩️ رجوع</button>
+                <h3 id="currentRoomName"></h3>
+            </div>
+
+            <div class="info-box" id="roomInfo">
+                <!-- يتم تعبئته بالكود -->
+            </div>
+
+            <div class="chat-box">
+                <div class="messages" id="messagesList"></div>
+                
+                <div class="input-area">
+                    <input type="text" id="messageInput" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button class="btn" style="width: auto;" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== قاعدة البيانات في LocalStorage ==========
+        let currentUser = null;
+        let currentRoom = null;
+        
+        // تحميل البيانات
+        let users = JSON.parse(localStorage.getItem('users')) || [];
+        let rooms = JSON.parse(localStorage.getItem('rooms')) || [];
+        let messages = JSON.parse(localStorage.getItem('messages')) || {};
+
+        // ========== تسجيل الدخول ==========
+        function login() {
+            const name = document.getElementById('loginName').value.trim();
+            const email = document.getElementById('loginEmail').value.trim();
+
+            if (!name || !email) {
+                alert('الرجاء إدخال الاسم والبريد الإلكتروني');
+                return;
+            }
+
+            // البحث عن المستخدم
+            let user = users.find(u => u.email === email);
+            
+            if (user) {
+                // مستخدم موجود
+                user.name = name; // تحديث الاسم
+            } else {
+                // مستخدم جديد
+                user = {
+                    id: Date.now().toString(),
+                    name: name,
+                    email: email,
+                    createdAt: new Date().toISOString()
+                };
+                users.push(user);
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+
+            currentUser = user;
+            document.getElementById('userName').textContent = user.name;
+            document.getElementById('userEmail').textContent = user.email;
+            
+            switchScreen('main');
+            loadRooms();
+        }
+
+        function quickLogin() {
+            const randomId = Math.floor(Math.random() * 10000);
+            currentUser = {
+                id: Date.now().toString(),
+                name: 'مستخدم ' + randomId,
+                email: 'user' + randomId + '@test.com',
+                createdAt: new Date().toISOString()
+            };
+            
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            
+            switchScreen('main');
+            loadRooms();
+        }
+
+        function logout() {
+            currentUser = null;
+            switchScreen('login');
+        }
+
+        // ========== إدارة المساحات ==========
+        function createRoom() {
+            const roomName = document.getElementById('newRoomName').value.trim();
+            
+            if (!roomName) {
+                alert('اكتب اسم المساحة');
+                return;
+            }
+
+            // توليد كود فريد
+            let code;
+            do {
+                code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            } while (rooms.some(r => r.code === code));
+
+            const room = {
+                id: Date.now().toString(),
+                name: roomName,
+                code: code,
+                createdBy: currentUser.email,
+                members: [{
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    email: currentUser.email
+                }],
+                createdAt: new Date().toISOString()
+            };
+
+            rooms.push(room);
+            localStorage.setItem('rooms', JSON.stringify(rooms));
+
+            // تهيئة محادثة المساحة
+            messages[room.id] = [];
+            localStorage.setItem('messages', JSON.stringify(messages));
+
+            document.getElementById('newRoomName').value = '';
+            
+            alert(`✅ تم إنشاء المساحة!\nكود المساحة: ${code}\nشارك هذا الكود مع صديقك`);
+            loadRooms();
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('joinRoomCode').value.toUpperCase().trim();
+            
+            if (!code) {
+                alert('اكتب كود المساحة');
+                return;
+            }
+
+            const room = rooms.find(r => r.code === code);
+            
+            if (!room) {
+                alert('❌ كود المساحة غير صحيح');
+                return;
+            }
+
+            // التحقق من عدد الأعضاء
+            if (room.members.length >= 2) {
+                alert('❌ هذه المساحة ممتلئة (يمكن لشخصين فقط)');
+                return;
+            }
+
+            // التحقق من عدم وجود العضو
+            const isMember = room.members.some(m => m.email === currentUser.email);
+            
+            if (!isMember) {
+                room.members.push({
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    email: currentUser.email
+                });
+                localStorage.setItem('rooms', JSON.stringify(rooms));
+            }
+
+            document.getElementById('joinRoomCode').value = '';
+            
+            alert('✅ تم الانضمام للمساحة بنجاح');
+            loadRooms();
+        }
+
+        function loadRooms() {
+            const userRooms = rooms.filter(room => 
+                room.members.some(m => m.email === currentUser.email)
+            );
+
+            const roomsList = document.getElementById('roomsList');
+
+            if (userRooms.length === 0) {
+                roomsList.innerHTML = '<p style="color: #718096; text-align: center; padding: 20px;">لا توجد مساحات بعد... أنشئ أول مساحة لك!</p>';
+                return;
+            }
+
+            roomsList.innerHTML = userRooms.map(room => {
+                const otherMember = room.members.find(m => m.email !== currentUser.email);
+                return `
+                    <div class="room-card" onclick="openRoom('${room.id}')">
+                        <h3>${room.name}</h3>
+                        <div class="room-code">${room.code}</div>
+                        <p style="color: #4a5568; margin-top: 10px;">
+                            👥 ${room.members.map(m => m.name).join(' و ')}
+                        </p>
+                        ${otherMember ? '' : '<p style="color: #f56565; font-size: 14px;">⏳ في انتظار صديق...</p>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========== فتح المساحة ==========
+        function openRoom(roomId) {
+            currentRoom = rooms.find(r => r.id === roomId);
+            
+            document.getElementById('currentRoomName').textContent = currentRoom.name;
+            
+            const otherMember = currentRoom.members.find(m => m.email !== currentUser.email);
+            const roomInfo = document.getElementById('roomInfo');
+            
+            if (currentRoom.members.length === 1) {
+                roomInfo.innerHTML = `
+                    <p>⏳ في انتظار انضمام صديق...</p>
+                    <p>كود المساحة: <span class="code">${currentRoom.code}</span></p>
+                    <p style="color: #f56565; font-size: 14px;">شارك هذا الكود مع صديقك</p>
+                `;
+            } else {
+                roomInfo.innerHTML = `
+                    <p>تتحدث مع: <strong>${otherMember.name}</strong></p>
+                    <p>كود المساحة: <span class="code">${currentRoom.code}</span></p>
+                `;
+            }
+
+            loadMessages();
+            switchScreen('room');
+        }
+
+        // ========== الرسائل ==========
+        function loadMessages() {
+            const roomMessages = messages[currentRoom.id] || [];
+            const messagesList = document.getElementById('messagesList');
+
+            if (roomMessages.length === 0) {
+                messagesList.innerHTML = '<p style="text-align: center; color: #718096; padding: 20px;">📝 اكتب أول رسالة...</p>';
+                return;
+            }
+
+            messagesList.innerHTML = roomMessages.map(msg => {
+                const isSent = msg.sender.email === currentUser.email;
+                return `
+                    <div class="message ${isSent ? 'sent' : 'received'}">
+                        ${!isSent ? `<small>${msg.sender.name}</small><br>` : ''}
+                        ${msg.text}
+                        <small>${new Date(msg.time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</small>
+                    </div>
+                `;
+            }).join('');
+
+            // التمرير لآخر رسالة
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+
+            if (!text || !currentRoom) return;
+
+            if (!messages[currentRoom.id]) {
+                messages[currentRoom.id] = [];
+            }
+
+            const message = {
+                sender: {
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    email: currentUser.email
+                },
+                text: text,
+                time: new Date().toISOString()
+            };
+
+            messages[currentRoom.id].push(message);
+            localStorage.setItem('messages', JSON.stringify(messages));
+
+            input.value = '';
+            loadMessages();
+        }
+
+        function backToRooms() {
+            currentRoom = null;
+            switchScreen('main');
+            loadRooms();
+        }
+
+        // ========== التحكم في الشاشات ==========
+        function switchScreen(screen) {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('mainScreen').classList.remove('active');
+            document.getElementById('roomScreen').classList.remove('active');
+            
+            document.getElementById(screen + 'Screen').classList.add('active');
+        }
+    </script>
+</body>
+</html>
