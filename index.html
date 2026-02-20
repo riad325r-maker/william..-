@@ -3,16 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>William Rooms - مع خاصية يكتب...</title>
+    <title>William Rooms - Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #6366f1;
+            --primary-dark: #4f46e5;
             --bg: #f8fafc;
             --card: #ffffff;
             --text: #1e293b;
             --sent: #6366f1;
             --received: #f1f5f9;
+            --border: #e2e8f0;
+            --online: #10b981;
+            --offline: #94a3b8;
         }
 
         .dark-mode {
@@ -20,6 +24,7 @@
             --card: #1e293b;
             --text: #f8fafc;
             --received: #334155;
+            --border: #475569;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
@@ -33,12 +38,15 @@
         .card { background: var(--card); border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 15px; }
         h1 { color: var(--primary); text-align: center; margin-bottom: 20px; }
         
-        input { width: 100%; padding: 12px 15px; border-radius: 12px; border: 1px solid #e2e8f0; background: transparent; color: var(--text); margin-bottom: 10px; font-size: 16px; }
+        input, textarea { width: 100%; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text); margin-bottom: 10px; font-size: 16px; }
         .btn { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
         .btn:active { transform: scale(0.98); }
-        .btn-secondary { background: #10b981; }
+        .btn-secondary { background: #64748b; }
+        .btn-success { background: #10b981; }
+        .btn-danger { background: #ef4444; }
 
-        .chat-header { display: flex; align-items: center; gap: 10px; padding-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        /* Chat UI */
+        .chat-header { display: flex; align-items: center; gap: 10px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
         .messages { flex: 1; overflow-y: auto; padding: 15px 0; display: flex; flex-direction: column; gap: 10px; }
         
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 15px; position: relative; font-size: 15px; }
@@ -52,135 +60,97 @@
         .input-area input { margin-bottom: 0; border-radius: 25px; }
         .btn-circle { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-        .badge { background: var(--primary); color: white; padding: 4px 8px; border-radius: 20px; font-size: 12px; }
-        .theme-toggle { position: fixed; top: 10px; left: 10px; background: var(--card); border: none; padding: 10px; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        /* User avatar */
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .room-member { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+        .online-indicator { width: 10px; height: 10px; border-radius: 50%; background: var(--online); }
+        .offline-indicator { background: var(--offline); }
 
-        /* تنسيق خاصية يكتب */
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 8px 15px;
-            background: var(--received);
-            border-radius: 20px;
-            width: fit-content;
-            margin-bottom: 10px;
-            font-size: 14px;
-            color: var(--primary);
-            animation: pulse 1.5s infinite;
-        }
+        /* Typing indicator */
+        .typing { font-size: 12px; color: var(--text); opacity: 0.7; padding: 5px 10px; }
 
-        .typing-dots {
-            display: flex;
-            gap: 3px;
-        }
+        /* Image in message */
+        .msg-image { max-width: 100%; border-radius: 10px; margin-top: 5px; cursor: pointer; }
 
-        .typing-dot {
-            width: 6px;
-            height: 6px;
-            background: var(--primary);
-            border-radius: 50%;
-            animation: typingBounce 1.4s infinite;
-        }
+        /* Delete button */
+        .delete-msg { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px; margin-right: 5px; }
 
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes typingBounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-8px); }
-        }
-
-        @keyframes pulse {
-            0% { opacity: 0.7; }
-            50% { opacity: 1; }
-            100% { opacity: 0.7; }
-        }
-
-        .online-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-left: 5px;
-        }
-        .online { background: #10b981; box-shadow: 0 0 10px #10b981; }
-        .offline { background: #94a3b8; }
+        /* Rooms list */
+        .room-card { cursor: pointer; transition: 0.2s; }
+        .room-card:hover { transform: translateY(-2px); }
     </style>
 </head>
 <body>
 
-<button class="theme-toggle" onclick="toggleTheme()">🌙</button>
-
 <div class="container">
+    <!-- شاشة تسجيل الدخول -->
     <div id="loginScreen" class="screen active">
-        <h1>William Rooms</h1>
+        <h1>William Rooms Pro</h1>
         <div class="card">
             <input type="email" id="email" placeholder="البريد الإلكتروني">
             <input type="password" id="password" placeholder="كلمة المرور">
             <button class="btn" onclick="signIn()">دخول</button>
-            <button class="btn" onclick="signUp()" style="background: #64748b; margin-top: 8px;">تسجيل جديد</button>
+            <button class="btn btn-secondary" onclick="signUp()">تسجيل جديد</button>
         </div>
     </div>
 
+    <!-- الشاشة الرئيسية (الغرف) -->
     <div id="mainScreen" class="screen">
         <div class="chat-header">
+            <div class="avatar" id="userAvatar">U</div>
             <h3 id="userName">مرحباً</h3>
-            <div style="margin-right: auto;">
-                <button onclick="logout()" style="background: #ef4444; border: none; color: white; padding: 5px 10px; border-radius: 8px; cursor: pointer;">خروج</button>
-            </div>
+            <button onclick="toggleDarkMode()" style="margin-right: auto; background: none; border: none; color: var(--primary); cursor: pointer;">🌙</button>
+            <button onclick="logout()" style="background: none; border: none; color: #ef4444; cursor: pointer;">خروج</button>
         </div>
-        
-        <div class="card" style="margin-top: 15px;">
+        <div class="card">
             <input type="text" id="roomName" placeholder="اسم الغرفة">
-            <input type="text" id="roomCode" placeholder="كود الغرفة">
+            <input type="text" id="roomCode" placeholder="كود الغرفة (للانضمام أو الإنشاء)">
             <div style="display: flex; gap: 10px;">
-                <button class="btn" onclick="createRoom()">➕ إنشاء</button>
-                <button class="btn btn-secondary" onclick="joinRoom()">🔑 انضمام</button>
+                <button class="btn" onclick="createRoom()">إنشاء</button>
+                <button class="btn btn-success" onclick="joinRoom()">انضمام</button>
             </div>
         </div>
-        
-        <h3>📁 غرفك</h3>
+        <h3>غرفك</h3>
         <div id="roomsList"></div>
     </div>
 
+    <!-- شاشة الدردشة -->
     <div id="chatScreen" class="screen">
         <div class="chat-header">
-            <button onclick="backToMain()" style="background:none; border:none; cursor:pointer; font-size: 20px;">🔙</button>
-            <div style="flex: 1;">
-                <h4 id="chatTitle">الغرفة</h4>
-                <div id="onlineStatus" style="font-size: 12px; display: flex; align-items: center; gap: 5px;">
-                    <span class="online-status offline" id="statusDot"></span>
-                    <span id="statusText">غير متصل</span>
-                </div>
-            </div>
-            <span id="roomCodeDisplay" class="badge"></span>
-        </div>
-
-        <!-- مؤشر الكتابة -->
-        <div id="typingIndicator" class="typing-indicator" style="display: none;">
-            <span id="typingName">الشخص</span>
-            <div class="typing-dots">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
+            <button onclick="leaveChat()" style="background:none; border:none; cursor:pointer; font-size:20px;">🔙</button>
+            <h4 id="chatTitle">الغرفة</h4>
+            <div style="margin-right: auto; display: flex; gap: 5px;">
+                <span id="onlineCount" style="font-size:14px;">0 متصل</span>
+                <button onclick="showRoomMembers()" style="background:none; border:none; cursor:pointer;">👥</button>
             </div>
         </div>
-
+        <div id="typingIndicator" class="typing" style="display: none;">شخص يكتب...</div>
         <div class="messages" id="messagesBox"></div>
-        
         <div class="input-area">
-            <input type="text" id="msgInput" placeholder="اكتب..." onkeypress="if(event.key==='Enter') sendMsg()" oninput="onUserTyping()">
+            <input type="text" id="msgInput" placeholder="اكتب رسالة..." onkeypress="handleKeyPress(event)">
             <button class="btn btn-circle" onclick="sendMsg()">➤</button>
+            <button class="btn btn-circle" onclick="uploadImage()" style="background: #10b981;">📷</button>
+            <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
         </div>
+    </div>
+
+    <!-- شاشة عرض أعضاء الغرفة -->
+    <div id="membersScreen" class="screen">
+        <div class="chat-header">
+            <button onclick="showScreen('chat')" style="background:none; border:none; cursor:pointer;">🔙</button>
+            <h4>الأعضاء المتصلون</h4>
+        </div>
+        <div id="membersList" class="card"></div>
     </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 
 <script>
+    // تهيئة Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyCYpL7ANTarOfbjudlur53Gxax-X2BZm1M",
         authDomain: "private-space-aad2a.firebaseapp.com",
@@ -192,256 +162,152 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    const storage = firebase.storage();
 
+    // متغيرات عامة
     let currentUser = null;
     let currentRoomId = null;
-    let unsubscribeMessages = null;
-    let unsubscribeRooms = null;
-    let unsubscribeTyping = null;
-    let unsubscribePresence = null;
+    let currentRoomName = '';
     let typingTimeout = null;
+    let unsubscribeMessages = null;
+    let unsubscribeRoom = null;
+    let unsubscribePresence = null;
 
-    // الوضع الليلي
-    function toggleTheme() {
-        document.body.classList.toggle('dark-mode');
-        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-    }
-    if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
-
+    // دالة التبديل بين الشاشات
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id + 'Screen').classList.add('active');
     }
 
-    // المصادقة
+    // الوضع المظلم
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    // تسجيل جديد
     function signUp() {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        if(!e || !p) return alert("املأ جميع الحقول");
-        auth.createUserWithEmailAndPassword(e, p)
-            .then(() => alert("تم التسجيل بنجاح"))
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        auth.createUserWithEmailAndPassword(email, password)
             .catch(err => alert(err.message));
     }
 
+    // دخول
     function signIn() {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        auth.signInWithEmailAndPassword(e, p)
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, password)
             .catch(err => alert(err.message));
     }
 
-    function logout() { 
-        if(currentRoomId) updateUserStatus('offline');
-        auth.signOut(); 
-    }
-
-    auth.onAuthStateChanged(user => {
+    // مراقبة حالة المصادقة
+    auth.onAuthStateChanged(async user => {
         if (user) {
             currentUser = user;
-            document.getElementById('userName').textContent = user.email.split('@')[0];
+            const name = user.email.split('@')[0];
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+            
+            // تحديث حالة الاتصال في Firestore
+            await setupPresence();
+            
             showScreen('main');
             loadRooms();
-            
-            const lastRoom = localStorage.getItem('lastRoom');
-            if(lastRoom) {
-                const room = JSON.parse(lastRoom);
-                openChat(room.id, room.name);
-            }
         } else {
-            if(unsubscribeRooms) unsubscribeRooms();
-            if(unsubscribeMessages) unsubscribeMessages();
-            if(unsubscribeTyping) unsubscribeTyping();
-            if(unsubscribePresence) unsubscribePresence();
             showScreen('login');
         }
     });
 
-    // تحديث حالة المستخدم (متصل/غير متصل)
-    function updateUserStatus(status) {
-        if(!currentRoomId || !currentUser) return;
-        db.collection('rooms').doc(currentRoomId).collection('presence').doc(currentUser.uid).set({
-            status: status,
-            name: currentUser.email.split('@')[0],
+    // إعداد حالة الاتصال
+    async function setupPresence() {
+        const userStatusRef = db.collection('presence').doc(currentUser.uid);
+        
+        // عند الاتصال
+        await userStatusRef.set({
+            online: true,
+            email: currentUser.email,
             lastSeen: firebase.firestore.FieldValue.serverTimestamp()
         });
-    }
 
-    // مراقبة حالة المستخدم الآخر
-    function watchUserPresence() {
-        if(!currentRoomId) return;
-        
-        unsubscribePresence = db.collection('rooms').doc(currentRoomId)
-            .collection('presence')
-            .onSnapshot(snap => {
-                let otherOnline = false;
-                let otherName = '';
-                
-                snap.forEach(doc => {
-                    if(doc.id !== currentUser.uid) {
-                        const data = doc.data();
-                        if(data.status === 'online') {
-                            otherOnline = true;
-                            otherName = data.name;
-                        }
-                    }
-                });
-                
-                const dot = document.getElementById('statusDot');
-                const text = document.getElementById('statusText');
-                
-                if(otherOnline) {
-                    dot.className = 'online-status online';
-                    text.textContent = `${otherName} متصل`;
-                } else {
-                    dot.className = 'online-status offline';
-                    text.textContent = 'غير متصل';
-                }
-            });
-    }
-
-    // ========== خاصية الكتابة ==========
-    function onUserTyping() {
-        if(!currentRoomId || !currentUser) return;
-        
-        // إنشاء أو تحديث مستند الكتابة
-        const typingRef = db.collection('rooms').doc(currentRoomId)
-            .collection('typing').doc(currentUser.uid);
-        
-        typingRef.set({
-            isTyping: true,
-            name: currentUser.email.split('@')[0],
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        // عند قطع الاتصال
+        window.addEventListener('beforeunload', () => {
+            userStatusRef.update({ online: false });
         });
-        
-        // إلغاء التايمر السابق
-        if(typingTimeout) clearTimeout(typingTimeout);
-        
-        // بعد التوقف عن الكتابة لمدة 2 ثانية، نرسل false
-        typingTimeout = setTimeout(() => {
-            typingRef.update({ isTyping: false });
-        }, 2000);
+
+        // مراقبة التغييرات في الغرفة الحالية
+        if (currentRoomId) {
+            updateRoomPresence(true);
+        }
     }
 
-    // مراقبة كتابة الطرف الآخر
-    function watchTyping() {
-        if(!currentRoomId) return;
-        
-        unsubscribeTyping = db.collection('rooms').doc(currentRoomId)
-            .collection('typing')
-            .onSnapshot(snap => {
-                let isOtherTyping = false;
-                let typingName = '';
-                
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    // نتأكد إنها مو المستخدم الحالي وفي حالة كتابة
-                    if(doc.id !== currentUser.uid && data.isTyping === true) {
-                        isOtherTyping = true;
-                        typingName = data.name;
-                        
-                        // التحقق من أن المستند حديث (آخر 3 ثواني)
-                        const docTime = data.timestamp?.toDate?.() || new Date();
-                        const now = new Date();
-                        const diff = (now - docTime) / 1000; // بالثواني
-                        
-                        if(diff > 3) isOtherTyping = false; // أقدم من 3 ثواني
-                    }
-                });
-                
-                const indicator = document.getElementById('typingIndicator');
-                const nameSpan = document.getElementById('typingName');
-                
-                if(isOtherTyping) {
-                    nameSpan.textContent = typingName;
-                    indicator.style.display = 'flex';
-                } else {
-                    indicator.style.display = 'none';
-                }
+    // تحديث وجود المستخدم في الغرفة
+    function updateRoomPresence(inRoom) {
+        if (!currentUser || !currentRoomId) return;
+        const roomRef = db.collection('rooms').doc(currentRoomId);
+        if (inRoom) {
+            roomRef.update({
+                activeMembers: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
             });
+        } else {
+            roomRef.update({
+                activeMembers: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+            });
+        }
     }
-    // =================================
 
+    // تسجيل الخروج
+    function logout() {
+        if (currentRoomId) {
+            updateRoomPresence(false);
+        }
+        auth.signOut();
+    }
+
+    // إنشاء غرفة
     function createRoom() {
-        const name = document.getElementById('roomName').value.trim();
-        const code = document.getElementById('roomCode').value.toUpperCase().trim() || Math.random().toString(36).substring(2, 8).toUpperCase();
-        
-        if(!name) return alert("اكتب اسم الغرفة");
+        const name = document.getElementById('roomName').value;
+        const code = document.getElementById('roomCode').value.toUpperCase();
+        if (!name || !code) return alert("اكمل البيانات");
         
         db.collection('rooms').add({
             name,
             code,
             members: [currentUser.uid],
-            membersData: [{ uid: currentUser.uid, email: currentUser.email }],
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            maxMembers: 2
+            activeMembers: [currentUser.uid],
+            createdAt: new Date()
         }).then(() => {
             document.getElementById('roomName').value = '';
             document.getElementById('roomCode').value = '';
-            alert(`تم إنشاء الغرفة - كود: ${code}`);
         });
     }
 
+    // الانضمام إلى غرفة
     function joinRoom() {
-        const code = document.getElementById('roomCode').value.toUpperCase().trim();
-        if(!code) return alert("اكتب كود الغرفة");
-
-        db.collection('rooms').where('code', '==', code).get().then(async snap => {
-            if(snap.empty) return alert("❌ كود غير صحيح");
-            
-            const roomDoc = snap.docs[0];
-            const roomData = roomDoc.data();
-            
-            if(roomData.members.includes(currentUser.uid)) {
-                openChat(roomDoc.id, roomData.name);
-                return;
-            }
-            
-            if(roomData.members.length >= 2) {
-                return alert("❌ الغرفة ممتلئة (شخصين فقط)");
-            }
-            
-            await roomDoc.ref.update({
-                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-                membersData: firebase.firestore.FieldValue.arrayUnion({ uid: currentUser.uid, email: currentUser.email })
+        const code = document.getElementById('roomCode').value.toUpperCase();
+        db.collection('rooms').where('code', '==', code).get().then(snap => {
+            if (snap.empty) return alert("الكود خطأ");
+            const doc = snap.docs[0];
+            doc.ref.update({
+                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
             });
-            
-            alert("✅ تم الانضمام بنجاح");
-            openChat(roomDoc.id, roomData.name);
         });
     }
 
+    // تحميل الغرف
     function loadRooms() {
-        unsubscribeRooms = db.collection('rooms')
+        db.collection('rooms')
             .where('members', 'array-contains', currentUser.uid)
-            .orderBy('createdAt', 'desc')
             .onSnapshot(snap => {
                 const list = document.getElementById('roomsList');
                 list.innerHTML = '';
-                
-                if(snap.empty) {
-                    list.innerHTML = '<div class="card">لا توجد غرف بعد... أنشئ أول غرفة</div>';
-                    return;
-                }
-                
                 snap.forEach(doc => {
                     const room = doc.data();
-                    const otherMember = room.membersData?.find(m => m.uid !== currentUser.uid);
-                    const membersCount = room.members?.length || 1;
-                    
                     const div = document.createElement('div');
-                    div.className = 'card';
-                    div.style.cursor = 'pointer';
+                    div.className = 'card room-card';
                     div.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${room.name}</strong>
-                                <div style="font-size: 12px; color: #94a3b8;">
-                                    ${otherMember ? `👤 ${otherMember.email}` : '⏳ في انتظار صديق...'}
-                                </div>
-                            </div>
-                            <div>
-                                <span class="badge">${room.code}</span>
-                                <span style="margin-right: 5px;">${membersCount}/2</span>
-                            </div>
-                        </div>
+                        <strong>${room.name}</strong> 
+                        <small style="float:left">${room.code}</small>
+                        <div style="font-size:12px; margin-top:5px;">👥 ${room.activeMembers?.length || 0} متصل</div>
                     `;
                     div.onclick = () => openChat(doc.id, room.name);
                     list.appendChild(div);
@@ -449,97 +315,224 @@
             });
     }
 
-    function openChat(id, name) {
-        currentRoomId = id;
+    // فتح الدردشة
+    function openChat(roomId, name) {
+        // تنظيف الاستماعات السابقة
+        if (unsubscribeMessages) unsubscribeMessages();
+        if (unsubscribeRoom) unsubscribeRoom();
+        if (unsubscribePresence) unsubscribePresence();
+
+        currentRoomId = roomId;
+        currentRoomName = name;
         document.getElementById('chatTitle').textContent = name;
         
-        localStorage.setItem('lastRoom', JSON.stringify({ id, name }));
+        // تحديث حالة التواجد
+        updateRoomPresence(true);
         
         showScreen('chat');
-        
-        if(unsubscribeMessages) unsubscribeMessages();
-        if(unsubscribeTyping) unsubscribeTyping();
-        if(unsubscribePresence) unsubscribePresence();
-        
-        loadMessages(id);
-        watchTyping();
-        watchUserPresence();
-        updateUserStatus('online');
+        loadMessages();
+        listenRoomPresence();
     }
 
-    function backToMain() {
-        if(unsubscribeMessages) unsubscribeMessages();
-        if(unsubscribeTyping) unsubscribeTyping();
-        if(unsubscribePresence) unsubscribePresence();
-        if(typingTimeout) clearTimeout(typingTimeout);
-        
-        updateUserStatus('offline');
-        currentRoomId = null;
-        localStorage.removeItem('lastRoom');
-        showScreen('main');
-    }
+    // مراقبة وجود الأعضاء في الغرفة
+    function listenRoomPresence() {
+        unsubscribeRoom = db.collection('rooms').doc(currentRoomId)
+            .onSnapshot(doc => {
+                const room = doc.data();
+                const count = room.activeMembers?.length || 0;
+                document.getElementById('onlineCount').textContent = count + ' متصل';
+            });
 
-    function loadMessages(roomId) {
-        unsubscribeMessages = db.collection('rooms').doc(roomId)
-            .collection('messages')
-            .orderBy('time')
-            .onSnapshot(snap => {
-                const box = document.getElementById('messagesBox');
-                box.innerHTML = '';
-                
-                snap.forEach(doc => {
-                    const m = doc.data();
-                    const isMe = m.sender === currentUser.uid;
-                    const time = m.time ? new Date(m.time.toDate()).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '';
-                    
-                    if(!isMe && !m.seen) { 
-                        doc.ref.update({seen: true}); 
-                    }
-
-                    const html = `
-                        <div class="msg ${isMe ? 'sent' : 'received'}">
-                            ${m.text}
-                            <div class="msg-info">
-                                <span>${time}</span>
-                                ${isMe ? `<span class="status-seen">${m.seen ? '👁️' : '✓'}</span>` : ''}
-                            </div>
-                        </div>
-                    `;
-                    box.innerHTML += html;
-                });
-                box.scrollTop = box.scrollHeight;
+        // مراقبة حالة المستخدمين (للإظهار في شاشة الأعضاء)
+        unsubscribePresence = db.collection('presence')
+            .onSnapshot(() => {
+                // يمكن تحديث واجهة الأعضاء إذا كانت مفتوحة
+                if (document.getElementById('membersScreen').classList.contains('active')) {
+                    showRoomMembers();
+                }
             });
     }
 
+    // تحميل الرسائل
+    function loadMessages() {
+        const messagesRef = db.collection('rooms').doc(currentRoomId)
+            .collection('messages').orderBy('time');
+        
+        unsubscribeMessages = messagesRef.onSnapshot(snap => {
+            const box = document.getElementById('messagesBox');
+            box.innerHTML = '';
+            
+            snap.forEach(doc => {
+                const msg = doc.data();
+                const msgId = doc.id;
+                const isMe = msg.sender === currentUser.uid;
+                const time = msg.time ? new Date(msg.time.toDate()).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
+                
+                // تحديث حالة القراءة إذا كانت الرسالة موجهة لي
+                if (!isMe && !msg.seen) {
+                    doc.ref.update({ seen: true });
+                }
+
+                let content = msg.text ? `<p>${msg.text}</p>` : '';
+                if (msg.imageUrl) {
+                    content += `<img src="${msg.imageUrl}" class="msg-image" onclick="window.open(this.src)">`;
+                }
+
+                const deleteBtn = isMe ? `<button class="delete-msg" onclick="deleteMessage('${msgId}')">🗑️</button>` : '';
+
+                const html = `
+                    <div class="msg ${isMe ? 'sent' : 'received'}">
+                        ${deleteBtn}
+                        ${content}
+                        <div class="msg-info">
+                            <span>${time}</span>
+                            ${isMe ? `<span class="status-seen">${msg.seen ? '✔️✔️' : '✔️'}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+                box.innerHTML += html;
+            });
+            
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    // إرسال رسالة نصية
     function sendMsg() {
         const input = document.getElementById('msgInput');
-        if(!input.value.trim() || !currentRoomId) return;
-        
-        // إيقاف مؤشر الكتابة قبل الإرسال
-        if(typingTimeout) {
-            clearTimeout(typingTimeout);
-            db.collection('rooms').doc(currentRoomId)
-                .collection('typing').doc(currentUser.uid)
-                .update({ isTyping: false });
-        }
+        if (!input.value.trim() || !currentRoomId) return;
         
         db.collection('rooms').doc(currentRoomId).collection('messages').add({
             text: input.value,
             sender: currentUser.uid,
             time: firebase.firestore.FieldValue.serverTimestamp(),
-            seen: false
+            seen: false,
+            type: 'text'
         });
+        
         input.value = '';
+        // إيقاف مؤشر الكتابة
+        stopTyping();
     }
 
-    // تنظيف عند إغلاق الصفحة
-    window.addEventListener('beforeunload', () => {
-        if(currentRoomId) {
-            db.collection('rooms').doc(currentRoomId)
-                .collection('presence').doc(currentUser.uid)
-                .update({ status: 'offline' });
+    // مؤشر الكتابة
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') {
+            sendMsg();
+        } else {
+            // إرسال حالة الكتابة
+            if (!typingTimeout) {
+                db.collection('rooms').doc(currentRoomId).update({
+                    typing: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+                });
+            }
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(stopTyping, 2000);
+        }
+    }
+
+    function stopTyping() {
+        if (currentRoomId) {
+            db.collection('rooms').doc(currentRoomId).update({
+                typing: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+            });
+        }
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+    }
+
+    // مراقبة حالة الكتابة في الغرفة
+    db.collection('rooms').doc(currentRoomId).onSnapshot(doc => {
+        if (doc.exists) {
+            const typing = doc.data().typing || [];
+            if (typing.length > 0 && !typing.includes(currentUser.uid)) {
+                document.getElementById('typingIndicator').style.display = 'block';
+            } else {
+                document.getElementById('typingIndicator').style.display = 'none';
+            }
         }
     });
+
+    // رفع صورة
+    function uploadImage() {
+        document.getElementById('imageUpload').click();
+    }
+
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const storageRef = storage.ref(`chat_images/${currentRoomId}/${Date.now()}_${file.name}`);
+        const uploadTask = storageRef.put(file);
+
+        uploadTask.on('state_changed', 
+            null,
+            error => alert(error.message),
+            () => {
+                uploadTask.snapshot.ref.getDownloadURL().then(downloadURL => {
+                    // إرسال الصورة كرسالة
+                    db.collection('rooms').doc(currentRoomId).collection('messages').add({
+                        imageUrl: downloadURL,
+                        sender: currentUser.uid,
+                        time: firebase.firestore.FieldValue.serverTimestamp(),
+                        seen: false,
+                        type: 'image'
+                    });
+                });
+            }
+        );
+    }
+
+    // حذف رسالة
+    function deleteMessage(msgId) {
+        if (confirm('هل تريد حذف هذه الرسالة؟')) {
+            db.collection('rooms').doc(currentRoomId)
+                .collection('messages').doc(msgId).delete();
+        }
+    }
+
+    // عرض أعضاء الغرفة
+    function showRoomMembers() {
+        if (!currentRoomId) return;
+        
+        db.collection('rooms').doc(currentRoomId).get().then(roomDoc => {
+            const room = roomDoc.data();
+            const members = room.members || [];
+            
+            // جلب بيانات الأعضاء من جدول presence
+            db.collection('presence').where('online', '==', true).get().then(snapshot => {
+                const onlineUsers = snapshot.docs.map(d => d.id);
+                
+                let html = '';
+                members.forEach(uid => {
+                    const isOnline = onlineUsers.includes(uid);
+                    const email = uid === currentUser.uid ? 'أنت' : 'مستخدم';
+                    html += `
+                        <div class="room-member">
+                            <div class="avatar" style="width:30px; height:30px; font-size:14px;">${email.charAt(0).toUpperCase()}</div>
+                            <span>${email}</span>
+                            <span class="${isOnline ? 'online-indicator' : 'offline-indicator'}" style="margin-right:auto;"></span>
+                        </div>
+                    `;
+                });
+                document.getElementById('membersList').innerHTML = html;
+                showScreen('members');
+            });
+        });
+    }
+
+    // مغادرة الدردشة
+    function leaveChat() {
+        if (currentRoomId) {
+            updateRoomPresence(false);
+            stopTyping();
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeRoom) unsubscribeRoom();
+            if (unsubscribePresence) unsubscribePresence();
+            currentRoomId = null;
+        }
+        showScreen('main');
+    }
 </script>
 </body>
     </html>
