@@ -3,1347 +3,543 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>William Rooms - دردشة خاصة</title>
-    <link rel="manifest" href="manifest.json">
+    <title>William Rooms - مع خاصية يكتب...</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --sent: #6366f1;
+            --received: #f1f5f9;
+        }
+
+        .dark-mode {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --received: #334155;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
-        body { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            min-height: 100vh; 
-            padding: 15px;
-            transition: background 0.3s;
+        body { background: var(--bg); color: var(--text); transition: 0.3s; }
+        
+        .container { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+        .screen { display: none; padding: 20px; animation: fadeIn 0.4s; flex-direction: column; flex: 1; }
+        .screen.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--card); border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        h1 { color: var(--primary); text-align: center; margin-bottom: 20px; }
+        
+        input { width: 100%; padding: 12px 15px; border-radius: 12px; border: 1px solid #e2e8f0; background: transparent; color: var(--text); margin-bottom: 10px; font-size: 16px; }
+        .btn { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-secondary { background: #10b981; }
+
+        .chat-header { display: flex; align-items: center; gap: 10px; padding-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .messages { flex: 1; overflow-y: auto; padding: 15px 0; display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 15px; position: relative; font-size: 15px; }
+        .msg.sent { align-self: flex-start; background: var(--sent); color: white; border-bottom-right-radius: 2px; }
+        .msg.received { align-self: flex-end; background: var(--received); color: var(--text); border-bottom-left-radius: 2px; }
+        
+        .msg-info { display: flex; align-items: center; justify-content: flex-end; gap: 5px; font-size: 10px; margin-top: 4px; opacity: 0.8; }
+        .status-seen { color: #38bdf8; font-weight: bold; }
+
+        .input-area { display: flex; gap: 8px; padding: 15px 0; }
+        .input-area input { margin-bottom: 0; border-radius: 25px; }
+        .btn-circle { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+        .badge { background: var(--primary); color: white; padding: 4px 8px; border-radius: 20px; font-size: 12px; }
+        .theme-toggle { position: fixed; top: 10px; left: 10px; background: var(--card); border: none; padding: 10px; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+        /* تنسيق خاصية يكتب */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            background: var(--received);
+            border-radius: 20px;
+            width: fit-content;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: var(--primary);
+            animation: pulse 1.5s infinite;
         }
-        
-        body.dark-mode {
-            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+
+        .typing-dots {
+            display: flex;
+            gap: 3px;
         }
-        
-        body.dark-mode .screen {
-            background: #2d3748;
-            color: #fff;
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
         }
-        
-        .container { max-width: 600px; margin: 0 auto; }
-        
-        .screen { 
-            background: white; 
-            border-radius: 20px; 
-            padding: 25px; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
-            display: none; 
-            margin: 10px 0;
-            transition: background 0.3s;
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
         }
-        
-        .screen.active { display: block; }
-        
-        h1 { text-align: center; color: #667eea; margin-bottom: 25px; font-size: 28px; }
-        h2 { color: #333; margin-bottom: 15px; }
-        body.dark-mode h2 { color: #fff; }
-        
-        input, select { 
-            width: 100%; 
-            padding: 15px; 
-            border: 2px solid #e0e0e0; 
-            border-radius: 12px; 
-            margin: 8px 0; 
-            font-size: 16px; 
-            transition: 0.3s; 
+
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
         }
-        
-        body.dark-mode input, body.dark-mode select {
-            background: #4a5568;
-            border-color: #718096;
-            color: #fff;
-        }
-        
-        input:focus, select:focus { border-color: #667eea; outline: none; }
-        
-        .btn { 
-            background: #667eea; 
-            color: white; 
-            border: none; 
-            padding: 15px 25px; 
-            border-radius: 12px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            width: 100%; 
-            margin: 8px 0; 
-            transition: 0.3s; 
-        }
-        
-        .btn:hover { 
-            background: #5a67d8; 
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-secondary { background: #48bb78; }
-        .btn-secondary:hover { background: #38a169; }
-        .btn-danger { background: #f56565; }
-        .btn-danger:hover { background: #e53e3e; }
-        
-        .room-card { 
-            background: #f7fafc; 
-            border: 2px solid #e2e8f0; 
-            border-radius: 15px; 
-            padding: 20px; 
-            margin: 15px 0; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            position: relative;
-            overflow: hidden;
-        }
-        
-        body.dark-mode .room-card {
-            background: #4a5568;
-            border-color: #718096;
-        }
-        
-        .room-card:hover { 
-            border-color: #667eea; 
-            transform: translateX(-5px); 
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2); 
-        }
-        
-        .online-indicator {
-            width: 12px;
-            height: 12px;
-            background: #48bb78;
+
+        .online-status {
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             display: inline-block;
             margin-left: 5px;
-            animation: pulse 2s infinite;
         }
-        
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(72, 187, 120, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0); }
-        }
-        
-        .offline-indicator {
-            width: 12px;
-            height: 12px;
-            background: #a0aec0;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .typing-indicator {
-            color: #667eea;
-            font-size: 14px;
-            margin: 5px 0;
-            padding: 5px;
-            animation: fade 1.5s infinite;
-        }
-        
-        @keyframes fade {
-            0% { opacity: 0.3; }
-            50% { opacity: 1; }
-            100% { opacity: 0.3; }
-        }
-        
-        .room-code { 
-            background: #667eea; 
-            color: white; 
-            padding: 5px 10px; 
-            border-radius: 8px; 
-            font-size: 14px; 
-            display: inline-block; 
-            margin: 10px 0; 
-        }
-        
-        .chat-box { 
-            background: #f7fafc; 
-            border-radius: 15px; 
-            height: 400px; 
-            display: flex; 
-            flex-direction: column; 
-            margin: 15px 0; 
-        }
-        
-        body.dark-mode .chat-box {
-            background: #4a5568;
-        }
-        
-        .messages { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 20px; 
-        }
-        
-        .message { 
-            max-width: 80%; 
-            padding: 12px 18px; 
-            border-radius: 15px; 
-            margin: 8px 0; 
-            word-wrap: break-word; 
-            position: relative;
-            transition: transform 0.2s;
-        }
-        
-        .message:hover {
-            transform: scale(1.02);
-        }
-        
-        .message.sent { 
-            background: #667eea; 
-            color: white; 
-            margin-left: auto; 
-            border-bottom-right-radius: 4px; 
-        }
-        
-        .message.received { 
-            background: white; 
-            margin-right: auto; 
-            border-bottom-left-radius: 4px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-        }
-        
-        body.dark-mode .message.received {
-            background: #718096;
-            color: #fff;
-        }
-        
-        .message small { 
-            display: block; 
-            font-size: 10px; 
-            opacity: 0.7; 
-            margin-top: 5px; 
-        }
-        
-        .input-area { 
-            display: flex; 
-            gap: 10px; 
-            padding: 15px; 
-            background: white; 
-            border-radius: 12px; 
-            align-items: center;
-        }
-        
-        body.dark-mode .input-area {
-            background: #2d3748;
-        }
-        
-        .input-area input { 
-            flex: 1; 
-            margin: 0; 
-        }
-        
-        .input-area button { 
-            width: auto; 
-            margin: 0;
-            min-width: 50px;
-        }
-        
-        .header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 20px; 
-            padding-bottom: 15px; 
-            border-bottom: 2px solid #e2e8f0; 
-        }
-        
-        body.dark-mode .header {
-            border-bottom-color: #4a5568;
-        }
-        
-        .info-box { 
-            background: #f7fafc; 
-            padding: 15px; 
-            border-radius: 12px; 
-            margin: 15px 0; 
-            text-align: center; 
-        }
-        
-        body.dark-mode .info-box {
-            background: #4a5568;
-        }
-        
-        .info-box .code { 
-            font-size: 24px; 
-            letter-spacing: 5px; 
-            color: #667eea; 
-            font-weight: bold; 
-        }
-        
-        .notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #48bb78;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 50px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            z-index: 1000;
-            animation: slideDown 0.5s;
-            display: none;
-        }
-        
-        @keyframes slideDown {
-            from { top: -100px; }
-            to { top: 20px; }
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-        
-        .action-btn {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 10px;
-            background: #edf2f7;
-            color: #4a5568;
-            cursor: pointer;
-            transition: 0.3s;
-            flex: 1;
-            min-width: 80px;
-        }
-        
-        body.dark-mode .action-btn {
-            background: #4a5568;
-            color: #fff;
-        }
-        
-        .action-btn:hover {
-            background: #667eea;
-            color: white;
-        }
-        
-        .emoji-picker {
-            display: none;
-            position: absolute;
-            bottom: 80px;
-            left: 20px;
-            background: white;
-            border-radius: 15px;
-            padding: 10px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            z-index: 100;
-        }
-        
-        body.dark-mode .emoji-picker {
-            background: #4a5568;
-        }
-        
-        .emoji-picker.active {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 5px;
-        }
-        
-        .emoji-btn {
-            padding: 8px;
-            font-size: 20px;
-            cursor: pointer;
-            border: none;
-            background: none;
-            border-radius: 8px;
-            transition: 0.3s;
-        }
-        
-        .emoji-btn:hover {
-            background: #edf2f7;
-            transform: scale(1.2);
-        }
-        
-        .image-preview {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 10px;
-            margin: 5px 0;
-            cursor: pointer;
-        }
-        
-        .image-preview.fullscreen {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            max-width: 90%;
-            max-height: 90%;
-            z-index: 2000;
-        }
-        
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            z-index: 1999;
-        }
-        
-        .overlay.active {
-            display: block;
-        }
-        
-        .upload-progress {
-            height: 4px;
-            background: #e2e8f0;
-            border-radius: 2px;
-            overflow: hidden;
-            margin: 10px 0;
-            display: none;
-        }
-        
-        .upload-progress.active {
-            display: block;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: #667eea;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        
-        .footer {
-            text-align: center;
-            color: white;
-            margin-top: 20px;
-            font-size: 14px;
-            opacity: 0.8;
-        }
-
-        .saved-rooms {
-            margin-top: 20px;
-            border-top: 2px dashed #e2e8f0;
-            padding-top: 20px;
-        }
-
-        .saved-room-item {
-            background: #edf2f7;
-            padding: 10px;
-            border-radius: 10px;
-            margin: 5px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        body.dark-mode .saved-room-item {
-            background: #4a5568;
-        }
-
-        .reconnect-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+        .online { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .offline { background: #94a3b8; }
     </style>
 </head>
 <body>
-    <div id="notification" class="notification"></div>
-    <div id="overlay" class="overlay" onclick="closeFullscreenImage()"></div>
 
-    <div class="container" id="app">
-        <!-- شاشة تسجيل الدخول -->
-        <div id="loginScreen" class="screen active">
-            <h1>William Rooms</h1>
-            
-            <div style="text-align: left; margin-bottom: 10px;">
-                <button class="action-btn" onclick="toggleDarkMode()" style="width: auto;">🌙 الوضع الليلي</button>
-            </div>
-            
-            <div style="margin: 25px 0;">
-                <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" value="">
-                <input type="password" id="loginPassword" placeholder="كلمة المرور">
-            </div>
-            
-            <button class="btn" onclick="signUp()">تسجيل جديد</button>
-            <button class="btn btn-secondary" onclick="signIn()">تسجيل دخول</button>
-            <p style="text-align: center; margin: 15px; color: #718096;">أو</p>
-            <button class="btn btn-secondary" onclick="googleSignIn()">الدخول بحساب Google</button>
-        </div>
+<button class="theme-toggle" onclick="toggleTheme()">🌙</button>
 
-        <!-- الشاشة الرئيسية -->
-        <div id="mainScreen" class="screen">
-            <div class="header">
-                <div>
-                    <h2>مرحباً <span id="userName"></span></h2>
-                    <p style="color: #718096;" id="userEmail"></p>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="action-btn" onclick="toggleDarkMode()" style="width: auto;">🌙</button>
-                    <button class="btn btn-danger" style="width: auto;" onclick="logout()">خروج</button>
-                </div>
-            </div>
-
-            <!-- إنشاء مساحة جديدة -->
-            <div style="margin: 20px 0;">
-                <h3>إنشاء غرفة جديدة</h3>
-                <input type="text" id="newRoomName" placeholder="اسم المساحة (مثال: أنا وصديقي)">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="createRoom()">إنشاء</button>
-                    <button class="action-btn" onclick="generateRandomCode()">🎲 كود عشوائي</button>
-                </div>
-            </div>
-
-            <!-- الانضمام لمساحة -->
-            <div style="margin: 20px 0;">
-                <h3>الانضمام إلى غرفة</h3>
-                <input type="text" id="joinRoomCode" placeholder="كود الغرفة" maxlength="8">
-                <button class="btn btn-secondary" onclick="joinRoom()">انضمام</button>
-            </div>
-
-            <!-- قائمة المساحات المحفوظة محلياً -->
-            <div class="saved-rooms">
-                <h3>غرفي المحفوظة</h3>
-                <div id="savedRoomsList"></div>
-            </div>
-
-            <!-- قائمة المساحات من Firebase -->
-            <h3>غرفتي النشطة</h3>
-            <div id="roomsList"></div>
-            
-            <!-- إحصائيات سريعة -->
-            <div class="info-box" style="margin-top: 20px; font-size: 14px;">
-                <span id="totalMessages">0</span> رسالة • 
-                <span id="totalRooms">0</span> غرف • 
-                <span id="onlineFriends">0</span> متصل
-            </div>
-        </div>
-
-        <!-- شاشة المساحة -->
-        <div id="roomScreen" class="screen">
-            <div class="header">
-                <button class="btn" style="width: auto;" onclick="backToRooms()">↩️ رجوع</button>
-                <h3 id="currentRoomName"></h3>
-                <button class="action-btn" onclick="showRoomSettings()">⚙️</button>
-            </div>
-
-            <div id="otherUserStatus" class="typing-indicator" style="display: none;"></div>
-
-            <div class="info-box" id="roomInfo"></div>
-
-            <div class="action-buttons">
-                <button class="action-btn" onclick="showEmojiPicker()">😊 إيموجي</button>
-                <button class="action-btn" onclick="shareFile()">📎 ملف</button>
-                <button class="action-btn" onclick="shareImage()">🖼️ صورة</button>
-                <button class="action-btn" onclick="clearChat()">🗑️ مسح</button>
-                <button class="action-btn" onclick="saveRoomLocally()">💾 حفظ محلياً</button>
-            </div>
-
-            <div id="emojiPicker" class="emoji-picker"></div>
-            <div id="uploadProgress" class="upload-progress">
-                <div id="progressBar" class="progress-bar"></div>
-            </div>
-
-            <div class="chat-box">
-                <div class="messages" id="messagesList"></div>
-                
-                <div class="input-area">
-                    <input type="text" id="messageInput" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendMessage()" oninput="onTyping()">
-                    <button class="btn" style="width: auto;" onclick="sendMessage()">➤</button>
-                </div>
-            </div>
+<div class="container">
+    <div id="loginScreen" class="screen active">
+        <h1>William Rooms</h1>
+        <div class="card">
+            <input type="email" id="email" placeholder="البريد الإلكتروني">
+            <input type="password" id="password" placeholder="كلمة المرور">
+            <button class="btn" onclick="signIn()">دخول</button>
+            <button class="btn" onclick="signUp()" style="background: #64748b; margin-top: 8px;">تسجيل جديد</button>
         </div>
     </div>
-    
-    <div class="footer">
-        William's Rooms © 2024 - تحديث تلقائي وحفظ محلي
+
+    <div id="mainScreen" class="screen">
+        <div class="chat-header">
+            <h3 id="userName">مرحباً</h3>
+            <div style="margin-right: auto;">
+                <button onclick="logout()" style="background: #ef4444; border: none; color: white; padding: 5px 10px; border-radius: 8px; cursor: pointer;">خروج</button>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 15px;">
+            <input type="text" id="roomName" placeholder="اسم الغرفة">
+            <input type="text" id="roomCode" placeholder="كود الغرفة">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="createRoom()">➕ إنشاء</button>
+                <button class="btn btn-secondary" onclick="joinRoom()">🔑 انضمام</button>
+            </div>
+        </div>
+        
+        <h3>📁 غرفك</h3>
+        <div id="roomsList"></div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <div id="chatScreen" class="screen">
+        <div class="chat-header">
+            <button onclick="backToMain()" style="background:none; border:none; cursor:pointer; font-size: 20px;">🔙</button>
+            <div style="flex: 1;">
+                <h4 id="chatTitle">الغرفة</h4>
+                <div id="onlineStatus" style="font-size: 12px; display: flex; align-items: center; gap: 5px;">
+                    <span class="online-status offline" id="statusDot"></span>
+                    <span id="statusText">غير متصل</span>
+                </div>
+            </div>
+            <span id="roomCodeDisplay" class="badge"></span>
+        </div>
 
-    <script>
-        // -------------------- إعدادات Firebase --------------------
-        const firebaseConfig = {
-            apiKey: "AIzaSyCYpL7ANTarOfbjudlur53Gxax-X2BZm1M",
-            authDomain: "private-space-aad2a.firebaseapp.com",
-            projectId: "private-space-aad2a",
-            storageBucket: "private-space-aad2a.firebasestorage.app",
-            messagingSenderId: "59667950205",
-            appId: "1:59667950205:web:05511e2ce4606a01ecdf14",
-            measurementId: "G-V254G4H903"
-        };
+        <!-- مؤشر الكتابة -->
+        <div id="typingIndicator" class="typing-indicator" style="display: none;">
+            <span id="typingName">الشخص</span>
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const storage = firebase.storage();
+        <div class="messages" id="messagesBox"></div>
+        
+        <div class="input-area">
+            <input type="text" id="msgInput" placeholder="اكتب..." onkeypress="if(event.key==='Enter') sendMsg()" oninput="onUserTyping()">
+            <button class="btn btn-circle" onclick="sendMsg()">➤</button>
+        </div>
+    </div>
+</div>
 
-        // -------------------- المتغيرات العامة --------------------
-        let currentUser = null;
-        let currentRoom = null;
-        let unsubscribeRooms = null;
-        let unsubscribeMessages = null;
-        let typingTimeout = null;
-        let isTyping = false;
-        let messageSound = new Audio('data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAAA8');
-        let autoSaveInterval = null;
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-        // مفاتيح التخزين المحلي
-        const STORAGE_KEYS = {
-            SAVED_ROOMS: 'william_saved_rooms',
-            CURRENT_ROOM: 'william_current_room',
-            DARK_MODE: 'william_dark_mode',
-            USER_PREFS: 'william_user_prefs'
-        };
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCYpL7ANTarOfbjudlur53Gxax-X2BZm1M",
+        authDomain: "private-space-aad2a.firebaseapp.com",
+        projectId: "private-space-aad2a",
+        storageBucket: "private-space-aad2a.firebasestorage.app",
+        messagingSenderId: "59667950205",
+        appId: "1:59667950205:web:05511e2ce4606a01ecdf14"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-        // -------------------- دوال الحفظ المحلي --------------------
-        function saveRoomLocally() {
-            if (!currentRoom || !currentUser) {
-                showNotification('لا توجد غرفة نشطة للحفظ', 'error');
-                return;
-            }
+    let currentUser = null;
+    let currentRoomId = null;
+    let unsubscribeMessages = null;
+    let unsubscribeRooms = null;
+    let unsubscribeTyping = null;
+    let unsubscribePresence = null;
+    let typingTimeout = null;
 
-            // حفظ الغرفة الحالية في التخزين المحلي
-            const savedRooms = getSavedRooms();
-            const roomToSave = {
-                id: currentRoom.id,
-                name: currentRoom.name,
-                code: currentRoom.code,
-                lastVisited: new Date().toISOString(),
-                members: currentRoom.members,
-                userId: currentUser.uid
-            };
+    // الوضع الليلي
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+    }
+    if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
 
-            // التحقق من عدم تكرار الحفظ
-            const existingIndex = savedRooms.findIndex(r => r.id === currentRoom.id);
-            if (existingIndex !== -1) {
-                savedRooms[existingIndex] = roomToSave;
-            } else {
-                savedRooms.push(roomToSave);
-            }
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id + 'Screen').classList.add('active');
+    }
 
-            localStorage.setItem(STORAGE_KEYS.SAVED_ROOMS, JSON.stringify(savedRooms));
-            showNotification('تم حفظ الغرفة محلياً ✅', 'success');
-            displaySavedRooms();
-        }
+    // المصادقة
+    function signUp() {
+        const e = document.getElementById('email').value, p = document.getElementById('password').value;
+        if(!e || !p) return alert("املأ جميع الحقول");
+        auth.createUserWithEmailAndPassword(e, p)
+            .then(() => alert("تم التسجيل بنجاح"))
+            .catch(err => alert(err.message));
+    }
 
-        function getSavedRooms() {
-            const saved = localStorage.getItem(STORAGE_KEYS.SAVED_ROOMS);
-            return saved ? JSON.parse(saved) : [];
-        }
+    function signIn() {
+        const e = document.getElementById('email').value, p = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(e, p)
+            .catch(err => alert(err.message));
+    }
 
-        function displaySavedRooms() {
-            const savedRoomsList = document.getElementById('savedRoomsList');
-            const savedRooms = getSavedRooms().filter(room => !currentUser || room.userId === currentUser?.uid);
+    function logout() { 
+        if(currentRoomId) updateUserStatus('offline');
+        auth.signOut(); 
+    }
 
-            if (savedRooms.length === 0) {
-                savedRoomsList.innerHTML = '<p style="color: #718096; text-align: center; padding: 10px;">لا توجد غرف محفوظة محلياً</p>';
-                return;
-            }
-
-            let html = '';
-            savedRooms.forEach(room => {
-                const lastVisited = new Date(room.lastVisited).toLocaleString('ar-EG');
-                html += `
-                    <div class="saved-room-item">
-                        <div>
-                            <strong>${room.name}</strong>
-                            <div style="font-size: 12px; color: #718096;">الكود: ${room.code}</div>
-                            <div style="font-size: 10px; color: #a0aec0;">آخر زيارة: ${lastVisited}</div>
-                        </div>
-                        <div>
-                            <button class="reconnect-btn" onclick="reconnectToRoom('${room.id}', '${room.code}')">اتصال</button>
-                            <button class="reconnect-btn" style="background: #f56565;" onclick="deleteSavedRoom('${room.id}')">✗</button>
-                        </div>
-                    </div>
-                `;
-            });
-            savedRoomsList.innerHTML = html;
-        }
-
-        function reconnectToRoom(roomId, roomCode) {
-            if (!currentUser) {
-                showNotification('الرجاء تسجيل الدخول أولاً', 'error');
-                return;
-            }
-
-            // محاولة الاتصال بالغرفة المحفوظة
-            db.collection('rooms').doc(roomId).get().then(doc => {
-                if (doc.exists) {
-                    openRoom(roomId);
-                } else {
-                    // إذا كانت الغرفة محذوفة من Firebase، نحاول الانضمام بالكود
-                    document.getElementById('joinRoomCode').value = roomCode;
-                    joinRoom();
-                }
-            }).catch(error => {
-                showNotification('فشل الاتصال بالغرفة', 'error');
-            });
-        }
-
-        function deleteSavedRoom(roomId) {
-            const savedRooms = getSavedRooms().filter(room => room.id !== roomId);
-            localStorage.setItem(STORAGE_KEYS.SAVED_ROOMS, JSON.stringify(savedRooms));
-            displaySavedRooms();
-            showNotification('تم حذف الغرفة من المحفوظات', 'info');
-        }
-
-        // حفظ آخر غرفة مفتوحة
-        function saveCurrentRoomToStorage() {
-            if (currentRoom && currentUser) {
-                const roomData = {
-                    id: currentRoom.id,
-                    name: currentRoom.name,
-                    code: currentRoom.code,
-                    lastActive: new Date().toISOString(),
-                    userId: currentUser.uid
-                };
-                localStorage.setItem(STORAGE_KEYS.CURRENT_ROOM, JSON.stringify(roomData));
-            }
-        }
-
-        // استعادة آخر غرفة مفتوحة
-        async function restoreLastRoom() {
-            if (!currentUser) return;
-
-            const lastRoomData = localStorage.getItem(STORAGE_KEYS.CURRENT_ROOM);
-            if (lastRoomData) {
-                const room = JSON.parse(lastRoomData);
-                if (room.userId === currentUser.uid) {
-                    try {
-                        const doc = await db.collection('rooms').doc(room.id).get();
-                        if (doc.exists) {
-                            const roomData = doc.data();
-                            // التحقق من أن المستخدم لا يزال عضواً
-                            if (roomData.membersUids.includes(currentUser.uid)) {
-                                showNotification('جاري استعادة آخر جلسة...', 'info');
-                                setTimeout(() => openRoom(room.id), 1000);
-                            }
-                        }
-                    } catch (error) {
-                        console.log('فشل استعادة آخر غرفة');
-                    }
-                }
-            }
-        }
-
-        // -------------------- دوال الإشعارات --------------------
-        function showNotification(message, type = 'info') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.style.display = 'block';
-            notification.style.background = type === 'success' ? '#48bb78' : 
-                                          type === 'error' ? '#f56565' : '#667eea';
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('userName').textContent = user.email.split('@')[0];
+            showScreen('main');
+            loadRooms();
             
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
-        }
-
-        async function requestNotificationPermission() {
-            if ('Notification' in window) {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    showNotification('الإشعارات مفعلة! 🔔', 'success');
-                }
+            const lastRoom = localStorage.getItem('lastRoom');
+            if(lastRoom) {
+                const room = JSON.parse(lastRoom);
+                openChat(room.id, room.name);
             }
+        } else {
+            if(unsubscribeRooms) unsubscribeRooms();
+            if(unsubscribeMessages) unsubscribeMessages();
+            if(unsubscribeTyping) unsubscribeTyping();
+            if(unsubscribePresence) unsubscribePresence();
+            showScreen('login');
         }
+    });
 
-        function sendBrowserNotification(title, body) {
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(title, { body, icon: 'https://via.placeholder.com/64' });
-            }
-        }
+    // تحديث حالة المستخدم (متصل/غير متصل)
+    function updateUserStatus(status) {
+        if(!currentRoomId || !currentUser) return;
+        db.collection('rooms').doc(currentRoomId).collection('presence').doc(currentUser.uid).set({
+            status: status,
+            name: currentUser.email.split('@')[0],
+            lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
 
-        // -------------------- دوال الوضع الليلي --------------------
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem(STORAGE_KEYS.DARK_MODE, isDark);
-            showNotification(isDark ? '🌙 الوضع الليلي مفعل' : '☀️ الوضع النهاري مفعل', 'info');
-        }
-
-        if (localStorage.getItem(STORAGE_KEYS.DARK_MODE) === 'true') {
-            document.body.classList.add('dark-mode');
-        }
-
-        // -------------------- دوال الإيموجي --------------------
-        function showEmojiPicker() {
-            const picker = document.getElementById('emojiPicker');
-            picker.classList.toggle('active');
-            
-            if (picker.classList.contains('active') && picker.children.length === 0) {
-                const emojis = ['😊', '😂', '❤️', '👍', '🎉', '😢', '😡', '👋', '🙏', '🔥', '✨', '🌟', '💀', '👀', '💯', '🔔', '📢', '💬'];
-                emojis.forEach(emoji => {
-                    const btn = document.createElement('button');
-                    btn.className = 'emoji-btn';
-                    btn.textContent = emoji;
-                    btn.onclick = () => {
-                        document.getElementById('messageInput').value += emoji;
-                        picker.classList.remove('active');
-                    };
-                    picker.appendChild(btn);
-                });
-            }
-        }
-
-        // -------------------- دوال رفع الملفات --------------------
-        function shareFile() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file || !currentRoom) return;
+    // مراقبة حالة المستخدم الآخر
+    function watchUserPresence() {
+        if(!currentRoomId) return;
+        
+        unsubscribePresence = db.collection('rooms').doc(currentRoomId)
+            .collection('presence')
+            .onSnapshot(snap => {
+                let otherOnline = false;
+                let otherName = '';
                 
-                showUploadProgress(true);
-                
-                try {
-                    const storageRef = storage.ref(`rooms/${currentRoom.id}/${Date.now()}_${file.name}`);
-                    const task = storageRef.put(file);
-                    
-                    task.on('state_changed',
-                        (snapshot) => {
-                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            updateUploadProgress(progress);
-                        },
-                        (error) => {
-                            showNotification('فشل رفع الملف', 'error');
-                            showUploadProgress(false);
-                        },
-                        async () => {
-                            const url = await task.snapshot.ref.getDownloadURL();
-                            sendFileMessage(url, file.name, 'file');
-                            showUploadProgress(false);
-                        }
-                    );
-                } catch (error) {
-                    showNotification(error.message, 'error');
-                    showUploadProgress(false);
-                }
-            };
-            input.click();
-        }
-
-        function shareImage() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file || !currentRoom) return;
-                
-                showUploadProgress(true);
-                
-                try {
-                    const storageRef = storage.ref(`rooms/${currentRoom.id}/images/${Date.now()}_${file.name}`);
-                    const task = storageRef.put(file);
-                    
-                    task.on('state_changed',
-                        (snapshot) => {
-                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            updateUploadProgress(progress);
-                        },
-                        (error) => {
-                            showNotification('فشل رفع الصورة', 'error');
-                            showUploadProgress(false);
-                        },
-                        async () => {
-                            const url = await task.snapshot.ref.getDownloadURL();
-                            sendFileMessage(url, file.name, 'image');
-                            showUploadProgress(false);
-                        }
-                    );
-                } catch (error) {
-                    showNotification(error.message, 'error');
-                    showUploadProgress(false);
-                }
-            };
-            input.click();
-        }
-
-        function showUploadProgress(show) {
-            const progress = document.getElementById('uploadProgress');
-            progress.classList.toggle('active', show);
-        }
-
-        function updateUploadProgress(percent) {
-            document.getElementById('progressBar').style.width = percent + '%';
-        }
-
-        function sendFileMessage(url, filename, type) {
-            if (!currentRoom || !currentUser) return;
-            
-            db.collection('rooms').doc(currentRoom.id).collection('messages').add({
-                text: type === 'image' ? '🖼️ صورة' : '📎 ملف',
-                fileUrl: url,
-                fileName: filename,
-                fileType: type,
-                sender: {
-                    uid: currentUser.uid,
-                    name: currentUser.name,
-                    email: currentUser.email
-                },
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                showNotification('تم إرسال الملف بنجاح', 'success');
-            }).catch(error => showNotification(error.message, 'error'));
-        }
-
-        function showFullscreenImage(url) {
-            const overlay = document.getElementById('overlay');
-            overlay.classList.add('active');
-            
-            const img = document.createElement('img');
-            img.src = url;
-            img.className = 'image-preview fullscreen';
-            img.onclick = () => closeFullscreenImage();
-            
-            overlay.innerHTML = '';
-            overlay.appendChild(img);
-        }
-
-        function closeFullscreenImage() {
-            document.getElementById('overlay').classList.remove('active');
-        }
-
-        // -------------------- دوال حالة المستخدمين --------------------
-        function updateUserStatus(status) {
-            if (!currentUser || !currentRoom) return;
-            
-            db.collection('rooms').doc(currentRoom.id).collection('presence').doc(currentUser.uid).set({
-                status: status,
-                lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-                name: currentUser.name
-            });
-        }
-
-        function watchUserPresence() {
-            if (!currentRoom) return;
-            
-            db.collection('rooms').doc(currentRoom.id).collection('presence')
-                .onSnapshot((snapshot) => {
-                    const onlineUsers = [];
-                    snapshot.forEach(doc => {
+                snap.forEach(doc => {
+                    if(doc.id !== currentUser.uid) {
                         const data = doc.data();
-                        if (data.status === 'online' && doc.id !== currentUser.uid) {
-                            onlineUsers.push(data.name);
+                        if(data.status === 'online') {
+                            otherOnline = true;
+                            otherName = data.name;
                         }
-                    });
-                    
-                    document.getElementById('onlineFriends').textContent = onlineUsers.length;
-                });
-        }
-
-        function onTyping() {
-            if (!currentRoom || !currentUser || isTyping) return;
-            
-            isTyping = true;
-            db.collection('rooms').doc(currentRoom.id).collection('typing').doc(currentUser.uid).set({
-                typing: true,
-                name: currentUser.name
-            });
-            
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                isTyping = false;
-                db.collection('rooms').doc(currentRoom.id).collection('typing').doc(currentUser.uid).delete();
-            }, 2000);
-        }
-
-        function watchTyping() {
-            if (!currentRoom) return;
-            
-            db.collection('rooms').doc(currentRoom.id).collection('typing')
-                .onSnapshot((snapshot) => {
-                    let typingUser = null;
-                    snapshot.forEach(doc => {
-                        if (doc.id !== currentUser.uid) {
-                            typingUser = doc.data().name;
-                        }
-                    });
-                    
-                    const statusDiv = document.getElementById('otherUserStatus');
-                    if (typingUser) {
-                        statusDiv.textContent = `${typingUser} يكتب... ✍️`;
-                        statusDiv.style.display = 'block';
-                    } else {
-                        statusDiv.style.display = 'none';
                     }
                 });
-        }
-
-        // -------------------- دوال مسح الدردشة --------------------
-        function clearChat() {
-            if (!currentRoom || !confirm('هل أنت متأكد من مسح كل الرسائل؟')) return;
-            
-            // مسح الرسائل من Firebase (يتطلب قواعد أمان مناسبة)
-            const batch = db.batch();
-            db.collection('rooms').doc(currentRoom.id).collection('messages').get().then(snapshot => {
-                snapshot.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                return batch.commit();
-            }).then(() => {
-                showNotification('تم مسح الدردشة', 'success');
-            }).catch(error => {
-                showNotification('فشل مسح الدردشة', 'error');
-            });
-        }
-
-        // -------------------- دوال إعدادات المساحة --------------------
-        function showRoomSettings() {
-            if (!currentRoom) return;
-            
-            const options = [
-                '🔊 تشغيل صوت الإشعارات',
-                '🔕 كتم الإشعارات',
-                '📋 نسخ كود المساحة',
-                '💾 حفظ محلياً',
-                '🗑️ حذف المساحة'
-            ];
-            
-            // قائمة بسيطة - يمكن تحسينها لاحقاً
-            const action = prompt('اختر الإعداد المطلوب:\n1. نسخ الكود\n2. حفظ محلياً\n3. حذف المساحة');
-            
-            if (action === '1') {
-                navigator.clipboard.writeText(currentRoom.code);
-                showNotification('تم نسخ الكود!', 'success');
-            } else if (action === '2') {
-                saveRoomLocally();
-            } else if (action === '3') {
-                if (confirm('هل أنت متأكد من حذف المساحة؟')) {
-                    deleteRoom();
-                }
-            }
-        }
-
-        function deleteRoom() {
-            if (!currentRoom || !currentUser) return;
-            
-            // حذف الغرفة (يتطلب صلاحيات مناسبة)
-            db.collection('rooms').doc(currentRoom.id).delete()
-                .then(() => {
-                    showNotification('تم حذف المساحة', 'success');
-                    backToRooms();
-                })
-                .catch(error => showNotification('فشل حذف المساحة', 'error'));
-        }
-
-        // -------------------- دوال إنشاء كود عشوائي --------------------
-        function generateRandomCode() {
-            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            document.getElementById('joinRoomCode').value = code;
-            showNotification(`كود عشوائي: ${code}`, 'info');
-        }
-
-        // -------------------- الدوال الرئيسية --------------------
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                currentUser = {
-                    uid: user.uid,
-                    name: user.displayName || user.email.split('@')[0],
-                    email: user.email
-                };
                 
-                document.getElementById('userName').textContent = currentUser.name;
-                document.getElementById('userEmail').textContent = currentUser.email;
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
                 
-                if (unsubscribeRooms) unsubscribeRooms();
-                
-                switchScreen('main');
-                loadRooms();
-                displaySavedRooms();
-                requestNotificationPermission();
-                
-                // استعادة آخر غرفة بعد تسجيل الدخول
-                setTimeout(() => restoreLastRoom(), 1000);
-                
-                // حفظ تلقائي كل دقيقة
-                if (autoSaveInterval) clearInterval(autoSaveInterval);
-                autoSaveInterval = setInterval(() => {
-                    if (currentRoom) {
-                        saveCurrentRoomToStorage();
-                        saveRoomLocally();
-                    }
-                }, 60000);
-                
-            } else {
-                currentUser = null;
-                if (unsubscribeRooms) unsubscribeRooms();
-                if (unsubscribeMessages) unsubscribeMessages();
-                if (autoSaveInterval) clearInterval(autoSaveInterval);
-                switchScreen('login');
-                displaySavedRooms(); // عرض الغرف المحفوظة حتى بدون تسجيل دخول
-            }
-        });
-
-        function loadRooms() {
-            if (!currentUser) return;
-
-            const roomsQuery = db.collection('rooms').where('membersUids', 'array-contains', currentUser.uid);
-            
-            unsubscribeRooms = roomsQuery.onSnapshot((snapshot) => {
-                const roomsList = document.getElementById('roomsList');
-                document.getElementById('totalRooms').textContent = snapshot.size;
-                
-                if (snapshot.empty) {
-                    roomsList.innerHTML = '<p style="color: #718096; text-align: center; padding: 20px;">لا توجد مساحات بعد... أنشئ أول مساحة لك!</p>';
-                    return;
-                }
-
-                let html = '';
-                snapshot.forEach(doc => {
-                    const room = doc.data();
-                    const otherMember = room.members.find(m => m.uid !== currentUser.uid);
-                    
-                    html += `
-                        <div class="room-card" onclick="openRoom('${doc.id}')">
-                            <h3>
-                                ${room.name}
-                                ${otherMember ? '<span class="online-indicator" title="متصل"></span>' : ''}
-                            </h3>
-                            <div class="room-code">${room.code}</div>
-                            <p style="color: #4a5568; margin-top: 10px;">
-                                👥 ${room.members.map(m => m.name).join(' و ')}
-                            </p>
-                            ${room.members.length === 1 ? '<p style="color: #f56565; font-size: 14px;">⏳ في انتظار صديق...</p>' : ''}
-                        </div>
-                    `;
-                });
-                roomsList.innerHTML = html;
-            });
-        }
-
-        function openRoom(roomId) {
-            if (unsubscribeMessages) unsubscribeMessages();
-            
-            updateUserStatus('online');
-
-            db.collection('rooms').doc(roomId).get().then(doc => {
-                if (!doc.exists) {
-                    showNotification('الغرفة غير موجودة', 'error');
-                    return;
-                }
-                
-                currentRoom = { id: doc.id, ...doc.data() };
-                
-                // حفظ في التخزين المحلي
-                saveCurrentRoomToStorage();
-                
-                document.getElementById('currentRoomName').textContent = currentRoom.name;
-                
-                const otherMember = currentRoom.members.find(m => m.uid !== currentUser.uid);
-                const roomInfo = document.getElementById('roomInfo');
-                
-                if (currentRoom.members.length === 1) {
-                    roomInfo.innerHTML = `
-                        <p>⏳ في انتظار انضمام صديق...</p>
-                        <p>كود المساحة: <span class="code">${currentRoom.code}</span></p>
-                        <p style="color: #f56565; font-size: 14px;">شارك هذا الكود مع صديقك</p>
-                    `;
+                if(otherOnline) {
+                    dot.className = 'online-status online';
+                    text.textContent = `${otherName} متصل`;
                 } else {
-                    roomInfo.innerHTML = `
-                        <p>تتحدث مع: <strong>${otherMember?.name || 'صديق'}</strong> <span class="online-indicator"></span></p>
-                        <p>كود المساحة: <span class="code">${currentRoom.code}</span></p>
-                    `;
+                    dot.className = 'online-status offline';
+                    text.textContent = 'غير متصل';
                 }
-
-                loadMessages();
-                watchTyping();
-                watchUserPresence();
-                switchScreen('room');
             });
-        }
+    }
 
-        function loadMessages() {
-            if (!currentRoom) return;
+    // ========== خاصية الكتابة ==========
+    function onUserTyping() {
+        if(!currentRoomId || !currentUser) return;
+        
+        // إنشاء أو تحديث مستند الكتابة
+        const typingRef = db.collection('rooms').doc(currentRoomId)
+            .collection('typing').doc(currentUser.uid);
+        
+        typingRef.set({
+            isTyping: true,
+            name: currentUser.email.split('@')[0],
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // إلغاء التايمر السابق
+        if(typingTimeout) clearTimeout(typingTimeout);
+        
+        // بعد التوقف عن الكتابة لمدة 2 ثانية، نرسل false
+        typingTimeout = setTimeout(() => {
+            typingRef.update({ isTyping: false });
+        }, 2000);
+    }
 
-            const messagesQuery = db.collection('rooms').doc(currentRoom.id)
-                .collection('messages').orderBy('timestamp');
-
-            unsubscribeMessages = messagesQuery.onSnapshot((snapshot) => {
-                const messagesList = document.getElementById('messagesList');
+    // مراقبة كتابة الطرف الآخر
+    function watchTyping() {
+        if(!currentRoomId) return;
+        
+        unsubscribeTyping = db.collection('rooms').doc(currentRoomId)
+            .collection('typing')
+            .onSnapshot(snap => {
+                let isOtherTyping = false;
+                let typingName = '';
                 
-                if (snapshot.empty) {
-                    messagesList.innerHTML = '<p style="text-align: center; color: #718096; padding: 20px;">📝 اكتب أول رسالة...</p>';
-                    return;
-                }
-
-                let html = '';
-                let messagesCount = 0;
-                
-                snapshot.forEach(doc => {
-                    const msg = doc.data();
-                    const isSent = msg.sender.uid === currentUser.uid;
-                    const time = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
-                    
-                    messagesCount++;
-                    
-                    if (!isSent && !doc.metadata.hasPendingWrites) {
-                        messageSound.play().catch(() => {});
-                        sendBrowserNotification('رسالة جديدة', `${msg.sender.name}: ${msg.text?.substring(0, 50) || 'ملف'}...`);
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    // نتأكد إنها مو المستخدم الحالي وفي حالة كتابة
+                    if(doc.id !== currentUser.uid && data.isTyping === true) {
+                        isOtherTyping = true;
+                        typingName = data.name;
+                        
+                        // التحقق من أن المستند حديث (آخر 3 ثواني)
+                        const docTime = data.timestamp?.toDate?.() || new Date();
+                        const now = new Date();
+                        const diff = (now - docTime) / 1000; // بالثواني
+                        
+                        if(diff > 3) isOtherTyping = false; // أقدم من 3 ثواني
                     }
-                    
-                    html += `
-                        <div class="message ${isSent ? 'sent' : 'received'}">
-                            ${!isSent ? `<small>${msg.sender.name}</small><br>` : ''}
-                            ${msg.fileType === 'image' ? 
-                                `<img src="${msg.fileUrl}" class="image-preview" onclick="event.stopPropagation(); showFullscreenImage('${msg.fileUrl}')">` : 
-                                msg.fileType === 'file' ? 
-                                `<a href="${msg.fileUrl}" target="_blank" style="color: ${isSent ? 'white' : '#667eea'};">📎 ${msg.fileName}</a><br>` : 
-                                msg.text}
-                            <small>${time}</small>
-                        </div>
-                    `;
                 });
                 
-                messagesList.innerHTML = html;
-                document.getElementById('totalMessages').textContent = messagesCount;
+                const indicator = document.getElementById('typingIndicator');
+                const nameSpan = document.getElementById('typingName');
                 
-                messagesList.scrollTop = messagesList.scrollHeight;
-            });
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-
-            if (!text || !currentRoom || !currentUser) return;
-
-            db.collection('rooms').doc(currentRoom.id).collection('messages').add({
-                text: text,
-                sender: {
-                    uid: currentUser.uid,
-                    name: currentUser.name,
-                    email: currentUser.email
-                },
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                input.value = '';
-                if (isTyping) {
-                    isTyping = false;
-                    db.collection('rooms').doc(currentRoom.id).collection('typing').doc(currentUser.uid).delete();
+                if(isOtherTyping) {
+                    nameSpan.textContent = typingName;
+                    indicator.style.display = 'flex';
+                } else {
+                    indicator.style.display = 'none';
                 }
-            }).catch(error => showNotification(error.message, 'error'));
-        }
+            });
+    }
+    // =================================
 
-        function backToRooms() {
-            if (unsubscribeMessages) unsubscribeMessages();
-            if (currentRoom) {
-                updateUserStatus('offline');
-                saveRoomLocally(); // حفظ قبل الخروج
-            }
-            currentRoom = null;
-            switchScreen('main');
-            displaySavedRooms(); // تحديث قائمة الغرف المحفوظة
-        }
-
-        function switchScreen(screen) {
-            document.getElementById('loginScreen').classList.remove('active');
-            document.getElementById('mainScreen').classList.remove('active');
-            document.getElementById('roomScreen').classList.remove('active');
-            document.getElementById(screen + 'Screen').classList.add('active');
-        }
-
-        function createRoom() {
-            const roomName = document.getElementById('newRoomName').value.trim();
-            if (!roomName) {
-                showNotification('اكتب اسم المساحة', 'error');
-                return;
-            }
-
-            let code = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-            db.collection('rooms').add({
-                name: roomName,
-                code: code,
-                createdBy: currentUser.email,
-                members: [{
-                    uid: currentUser.uid,
-                    name: currentUser.name,
-                    email: currentUser.email
-                }],
-                membersUids: [currentUser.uid],
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).then((docRef) => {
-                showNotification(`تم إنشاء الغرفة\nكود: ${code}`, 'success');
-                document.getElementById('newRoomName').value = '';
-                
-                // حفظ محلياً تلقائياً
-                setTimeout(() => {
-                    currentRoom = { id: docRef.id, name: roomName, code: code, members: [currentUser] };
-                    saveRoomLocally();
-                }, 500);
-            }).catch(error => showNotification(error.message, 'error'));
-        }
-
-        function joinRoom() {
-            const code = document.getElementById('joinRoomCode').value.toUpperCase().trim();
-            if (!code) {
-                showNotification('اكتب كود المساحة', 'error');
-                return;
-            }
-
-            db.collection('rooms').where('code', '==', code).get()
-                .then((snapshot) => {
-                    if (snapshot.empty) {
-                        showNotification('❌ كود الغرفة غير صحيح', 'error');
-                        return;
-                    }
-
-                    const roomDoc = snapshot.docs[0];
-                    const roomData = roomDoc.data();
-
-                    const isMember = roomData.members.some(m => m.email === currentUser.email);
-                    if (isMember) {
-                        showNotification('أنت بالفعل عضو في هذه الغرفة', 'info');
-                        openRoom(roomDoc.id);
-                        return;
-                    }
-
-                    if (roomData.members.length >= 2) {
-                        showNotification('❌ هذه المساحة ممتلئة (يمكن لشخصين فقط)', 'error');
-                        return;
-                    }
-
-                    const updatedMembers = [...roomData.members, {
-                        uid: currentUser.uid,
-                        name: currentUser.name,
-                        email: currentUser.email
-                    }];
-                    const updatedUids = [...roomData.membersUids, currentUser.uid];
-
-                    roomDoc.ref.update({
-                        members: updatedMembers,
-                        membersUids: updatedUids
-                    }).then(() => {
-                        showNotification('✅ تم الانضمام للغرفة بنجاح', 'success');
-                        document.getElementById('joinRoomCode').value = '';
-                        
-                        // حفظ محلياً تلقائياً
-                        setTimeout(() => {
-                            currentRoom = { id: roomDoc.id, ...roomData, members: updatedMembers };
-                            saveRoomLocally();
-                        }, 500);
-                    });
-                })
-                .catch(error => showNotification(error.message, 'error'));
-        }
-
-        // معالج beforeunload لحفظ الحالة قبل إغلاق الصفحة
-        window.addEventListener('beforeunload', () => {
-            if (currentRoom && currentUser) {
-                saveCurrentRoomToStorage();
-                updateUserStatus('offline');
-            }
+    function createRoom() {
+        const name = document.getElementById('roomName').value.trim();
+        const code = document.getElementById('roomCode').value.toUpperCase().trim() || Math.random().toString(36).substring(2, 8).toUpperCase();
+        
+        if(!name) return alert("اكتب اسم الغرفة");
+        
+        db.collection('rooms').add({
+            name,
+            code,
+            members: [currentUser.uid],
+            membersData: [{ uid: currentUser.uid, email: currentUser.email }],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            maxMembers: 2
+        }).then(() => {
+            document.getElementById('roomName').value = '';
+            document.getElementById('roomCode').value = '';
+            alert(`تم إنشاء الغرفة - كود: ${code}`);
         });
+    }
 
-        // بدء التطبيق
-        console.log('تم تحميل التطبيق بنجاح مع خاصية الحفظ التلقائي');
-    </script>
+    function joinRoom() {
+        const code = document.getElementById('roomCode').value.toUpperCase().trim();
+        if(!code) return alert("اكتب كود الغرفة");
+
+        db.collection('rooms').where('code', '==', code).get().then(async snap => {
+            if(snap.empty) return alert("❌ كود غير صحيح");
+            
+            const roomDoc = snap.docs[0];
+            const roomData = roomDoc.data();
+            
+            if(roomData.members.includes(currentUser.uid)) {
+                openChat(roomDoc.id, roomData.name);
+                return;
+            }
+            
+            if(roomData.members.length >= 2) {
+                return alert("❌ الغرفة ممتلئة (شخصين فقط)");
+            }
+            
+            await roomDoc.ref.update({
+                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+                membersData: firebase.firestore.FieldValue.arrayUnion({ uid: currentUser.uid, email: currentUser.email })
+            });
+            
+            alert("✅ تم الانضمام بنجاح");
+            openChat(roomDoc.id, roomData.name);
+        });
+    }
+
+    function loadRooms() {
+        unsubscribeRooms = db.collection('rooms')
+            .where('members', 'array-contains', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .onSnapshot(snap => {
+                const list = document.getElementById('roomsList');
+                list.innerHTML = '';
+                
+                if(snap.empty) {
+                    list.innerHTML = '<div class="card">لا توجد غرف بعد... أنشئ أول غرفة</div>';
+                    return;
+                }
+                
+                snap.forEach(doc => {
+                    const room = doc.data();
+                    const otherMember = room.membersData?.find(m => m.uid !== currentUser.uid);
+                    const membersCount = room.members?.length || 1;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'card';
+                    div.style.cursor = 'pointer';
+                    div.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${room.name}</strong>
+                                <div style="font-size: 12px; color: #94a3b8;">
+                                    ${otherMember ? `👤 ${otherMember.email}` : '⏳ في انتظار صديق...'}
+                                </div>
+                            </div>
+                            <div>
+                                <span class="badge">${room.code}</span>
+                                <span style="margin-right: 5px;">${membersCount}/2</span>
+                            </div>
+                        </div>
+                    `;
+                    div.onclick = () => openChat(doc.id, room.name);
+                    list.appendChild(div);
+                });
+            });
+    }
+
+    function openChat(id, name) {
+        currentRoomId = id;
+        document.getElementById('chatTitle').textContent = name;
+        
+        localStorage.setItem('lastRoom', JSON.stringify({ id, name }));
+        
+        showScreen('chat');
+        
+        if(unsubscribeMessages) unsubscribeMessages();
+        if(unsubscribeTyping) unsubscribeTyping();
+        if(unsubscribePresence) unsubscribePresence();
+        
+        loadMessages(id);
+        watchTyping();
+        watchUserPresence();
+        updateUserStatus('online');
+    }
+
+    function backToMain() {
+        if(unsubscribeMessages) unsubscribeMessages();
+        if(unsubscribeTyping) unsubscribeTyping();
+        if(unsubscribePresence) unsubscribePresence();
+        if(typingTimeout) clearTimeout(typingTimeout);
+        
+        updateUserStatus('offline');
+        currentRoomId = null;
+        localStorage.removeItem('lastRoom');
+        showScreen('main');
+    }
+
+    function loadMessages(roomId) {
+        unsubscribeMessages = db.collection('rooms').doc(roomId)
+            .collection('messages')
+            .orderBy('time')
+            .onSnapshot(snap => {
+                const box = document.getElementById('messagesBox');
+                box.innerHTML = '';
+                
+                snap.forEach(doc => {
+                    const m = doc.data();
+                    const isMe = m.sender === currentUser.uid;
+                    const time = m.time ? new Date(m.time.toDate()).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '';
+                    
+                    if(!isMe && !m.seen) { 
+                        doc.ref.update({seen: true}); 
+                    }
+
+                    const html = `
+                        <div class="msg ${isMe ? 'sent' : 'received'}">
+                            ${m.text}
+                            <div class="msg-info">
+                                <span>${time}</span>
+                                ${isMe ? `<span class="status-seen">${m.seen ? '👁️' : '✓'}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    box.innerHTML += html;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
+    }
+
+    function sendMsg() {
+        const input = document.getElementById('msgInput');
+        if(!input.value.trim() || !currentRoomId) return;
+        
+        // إيقاف مؤشر الكتابة قبل الإرسال
+        if(typingTimeout) {
+            clearTimeout(typingTimeout);
+            db.collection('rooms').doc(currentRoomId)
+                .collection('typing').doc(currentUser.uid)
+                .update({ isTyping: false });
+        }
+        
+        db.collection('rooms').doc(currentRoomId).collection('messages').add({
+            text: input.value,
+            sender: currentUser.uid,
+            time: firebase.firestore.FieldValue.serverTimestamp(),
+            seen: false
+        });
+        input.value = '';
+    }
+
+    // تنظيف عند إغلاق الصفحة
+    window.addEventListener('beforeunload', () => {
+        if(currentRoomId) {
+            db.collection('rooms').doc(currentRoomId)
+                .collection('presence').doc(currentUser.uid)
+                .update({ status: 'offline' });
+        }
+    });
+</script>
 </body>
     </html>
