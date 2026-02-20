@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>William Rooms - النسخة النهائية</title>
+    <title>William Rooms - الإصدار النهائي</title>
     <!-- Google Fonts & Font Awesome -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -46,8 +46,8 @@
         
         h1 { font-size: 2rem; background: var(--sent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 30px; }
         
-        input { width: 100%; padding: 14px 18px; border-radius: 15px; border: 2px solid transparent; background: var(--bg); color: var(--text); margin-bottom: 12px; font-size: 16px; outline: none; }
-        input:focus { border-color: var(--primary); }
+        input, textarea { width: 100%; padding: 14px 18px; border-radius: 15px; border: 2px solid transparent; background: var(--bg); color: var(--text); margin-bottom: 12px; font-size: 16px; outline: none; }
+        input:focus, textarea:focus { border-color: var(--primary); }
         
         .btn { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 15px; cursor: pointer; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; transition: 0.2s; }
         .btn:hover { background: var(--primary-hover); transform: scale(1.02); }
@@ -96,6 +96,13 @@
         
         /* Welcome Message */
         .welcome-header { display: flex; align-items: center; gap: 10px; }
+        
+        /* Debug Panel */
+        .debug-panel { background: var(--card); border-radius: 15px; padding: 15px; margin-top: 20px; border: 1px solid var(--danger); display: none; }
+        .debug-panel.visible { display: block; }
+        .debug-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .debug-title { color: var(--danger); font-weight: bold; }
+        .debug-content { background: var(--bg); padding: 10px; border-radius: 10px; font-size: 12px; max-height: 200px; overflow-y: auto; }
     </style>
 </head>
 <body data-theme="light">
@@ -125,12 +132,28 @@
                     <strong id="userName" style="font-size: 18px;">...</strong>
                 </div>
             </div>
-            <button onclick="logout()" class="btn-danger" style="padding: 8px 15px;"><i class="fas fa-sign-out-alt"></i> خروج</button>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="toggleDebugPanel()" class="btn-danger" style="padding: 8px 12px; background: var(--card); color: var(--text);" title="لوحة التصحيح"><i class="fas fa-bug"></i></button>
+                <button onclick="logout()" class="btn-danger" style="padding: 8px 15px;"><i class="fas fa-sign-out-alt"></i> خروج</button>
+            </div>
+        </div>
+
+        <!-- لوحة التصحيح المخفية -->
+        <div id="debugPanel" class="debug-panel">
+            <div class="debug-header">
+                <span class="debug-title"><i class="fas fa-bug"></i> لوحة التصحيح</span>
+                <button onclick="toggleDebugPanel()" style="background: none; border: none; color: var(--text); cursor: pointer;">✕</button>
+            </div>
+            <div class="debug-content" id="debugContent">
+                <button class="btn btn-outline" style="margin-bottom: 10px;" onclick="debugShowAllRooms()"><i class="fas fa-search"></i> عرض جميع الغرف</button>
+                <button class="btn btn-outline" onclick="debugFixRoomCode()"><i class="fas fa-wrench"></i> إصلاح الكودات</button>
+                <div id="debugResult" style="margin-top: 10px;"></div>
+            </div>
         </div>
 
         <div class="card" style="margin-top: 10px;">
             <input type="text" id="roomName" placeholder="اسم المساحة (مثلاً: ذكرياتنا)">
-            <input type="text" id="roomCode" placeholder="الكود السري (3 أحرف أو أكثر)" maxlength="20">
+            <input type="text" id="roomCode" placeholder="الكود السري (3 أحرف أو أكثر)" maxlength="20" dir="ltr" style="text-align: left;">
             <div style="display: flex; gap: 10px;">
                 <button class="btn" onclick="createRoom()"><i class="fas fa-plus"></i> إنشاء</button>
                 <button class="btn btn-success" onclick="joinRoom()"><i class="fas fa-door-open"></i> انضمام</button>
@@ -224,7 +247,7 @@
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     initTheme();
 
-    // ================== نظام حفظ الجلسة والغرف ==================
+    // ================== نظام حفظ الجلسة ==================
     function saveCurrentRoom(roomId, roomName, roomCode, ownerId) {
         const roomData = {
             roomId,
@@ -254,8 +277,140 @@
                 clearSavedRoom();
             }
         } catch (error) {
-            console.log('لا يمكن استعادة الغرفة');
             clearSavedRoom();
+        }
+    }
+
+    // ================== معالج الغرف (RoomHandler) ==================
+    class RoomHandler {
+        constructor(db, currentUser) {
+            this.db = db;
+            this.currentUser = currentUser;
+        }
+
+        async createRoom(roomName, roomCode) {
+            try {
+                roomCode = roomCode.trim().toUpperCase().replace(/\s+/g, '');
+                
+                if (!roomName || !roomCode) {
+                    return { success: false, message: 'أدخل اسم المساحة والكود' };
+                }
+                
+                if (roomCode.length < 3) {
+                    return { success: false, message: 'الكود يجب أن يكون 3 أحرف على الأقل' };
+                }
+
+                const existingRooms = await this.db.collection('rooms')
+                    .where('code', '==', roomCode)
+                    .get();
+
+                if (!existingRooms.empty) {
+                    return { success: false, message: 'هذا الكود مستخدم بالفعل، اختر كوداً آخر' };
+                }
+
+                await this.db.collection('rooms').add({
+                    name: roomName,
+                    code: roomCode,
+                    owner: this.currentUser.uid,
+                    members: [this.currentUser.uid],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastActivity: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                return { success: true, message: 'تم إنشاء المساحة بنجاح', code: roomCode };
+                
+            } catch (error) {
+                return { success: false, message: 'خطأ في الإنشاء: ' + error.message };
+            }
+        }
+
+        async joinRoom(roomCode) {
+            try {
+                roomCode = roomCode.trim().toUpperCase().replace(/\s+/g, '');
+                
+                if (!roomCode) {
+                    return { success: false, message: 'أدخل الكود' };
+                }
+
+                const snapshot = await this.db.collection('rooms')
+                    .where('code', '==', roomCode)
+                    .get();
+
+                if (snapshot.empty) {
+                    return { success: false, message: '❌ الكود غير صحيح - تأكد من كتابته بشكل صحيح' };
+                }
+
+                const roomDoc = snapshot.docs[0];
+                const roomData = roomDoc.data();
+
+                if (roomData.members && roomData.members.includes(this.currentUser.uid)) {
+                    return { 
+                        success: true, 
+                        message: 'أنت بالفعل عضو في هذه المساحة',
+                        roomId: roomDoc.id,
+                        roomData: roomData,
+                        alreadyMember: true
+                    };
+                }
+
+                await roomDoc.ref.update({
+                    members: firebase.firestore.FieldValue.arrayUnion(this.currentUser.uid),
+                    lastActivity: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                return { 
+                    success: true, 
+                    message: '✅ تم الانضمام إلى المساحة',
+                    roomId: roomDoc.id,
+                    roomData: roomData,
+                    alreadyMember: false
+                };
+
+            } catch (error) {
+                return { success: false, message: 'فشل الانضمام: ' + error.message };
+            }
+        }
+
+        async debugShowAllRooms() {
+            try {
+                const allRooms = await this.db.collection('rooms').get();
+                let result = '<strong>جميع الغرف في قاعدة البيانات:</strong><br>';
+                allRooms.forEach(doc => {
+                    const data = doc.data();
+                    result += `📁 ${data.name} | 🔑 ${data.code} | 👤 المنشئ: ${data.owner}<br>`;
+                });
+                return result;
+            } catch (e) {
+                return 'خطأ في عرض الغرف: ' + e.message;
+            }
+        }
+
+        async fixRoomCodes() {
+            try {
+                const allRooms = await this.db.collection('rooms').get();
+                let fixed = 0;
+                
+                const batch = this.db.batch();
+                allRooms.forEach(doc => {
+                    const data = doc.data();
+                    if (data.code) {
+                        const newCode = data.code.trim().toUpperCase().replace(/\s+/g, '');
+                        if (newCode !== data.code) {
+                            batch.update(doc.ref, { code: newCode });
+                            fixed++;
+                        }
+                    }
+                });
+                
+                if (fixed > 0) {
+                    await batch.commit();
+                    return `✅ تم إصلاح ${fixed} كود`;
+                } else {
+                    return 'جميع الكودات سليمة';
+                }
+            } catch (e) {
+                return 'خطأ في الإصلاح: ' + e.message;
+            }
         }
     }
 
@@ -294,7 +449,6 @@
             showScreen('main');
             loadRooms();
             
-            // محاولة استعادة الغرفة المحفوظة
             setTimeout(() => {
                 const savedRoom = localStorage.getItem('currentRoom');
                 if (savedRoom) {
@@ -314,7 +468,38 @@
         }
     });
 
-    // ================== إدارة الغرف ==================
+    // ================== إدارة الغرف (باستخدام المعالج) ==================
+    async function createRoom() {
+        const name = document.getElementById('roomName').value.trim();
+        const code = document.getElementById('roomCode').value;
+        
+        const handler = new RoomHandler(db, currentUser);
+        const result = await handler.createRoom(name, code);
+        
+        showToast(result.success ? '✅ ' + result.message : '❌ ' + result.message);
+        
+        if (result.success) {
+            document.getElementById('roomName').value = '';
+            document.getElementById('roomCode').value = '';
+        }
+    }
+
+    async function joinRoom() {
+        const code = document.getElementById('roomCode').value;
+        
+        const handler = new RoomHandler(db, currentUser);
+        const result = await handler.joinRoom(code);
+        
+        showToast(result.message);
+        
+        if (result.success) {
+            document.getElementById('roomCode').value = '';
+            if (result.roomId) {
+                openChat(result.roomId, result.roomData.name, result.roomData.code, result.roomData.owner);
+            }
+        }
+    }
+
     function loadRooms() {
         if (!currentUser) return;
         if (unsubscribeRooms) unsubscribeRooms();
@@ -369,74 +554,6 @@
                 loader.style.display = 'none';
                 showToast('❌ خطأ في تحميل الغرف: ' + error.message);
             });
-    }
-
-    async function createRoom() {
-        const name = document.getElementById('roomName').value.trim();
-        let code = document.getElementById('roomCode').value.trim().toUpperCase();
-        
-        if (!name || !code) return showToast('❌ أدخل اسم المساحة والكود');
-        
-        code = code.replace(/\s+/g, '');
-        if (code.length < 3) return showToast('❌ الكود يجب أن يكون 3 أحرف على الأقل');
-
-        try {
-            const existing = await db.collection('rooms').where('code', '==', code).get();
-            if (!existing.empty) {
-                return showToast('❌ هذا الكود مستخدم بالفعل، اختر كوداً آخر');
-            }
-
-            await db.collection('rooms').add({
-                name,
-                code,
-                owner: currentUser.uid,
-                members: [currentUser.uid],
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            showToast('✅ تم إنشاء المساحة بنجاح');
-            document.getElementById('roomName').value = '';
-            document.getElementById('roomCode').value = '';
-            
-        } catch (error) {
-            showToast('❌ فشل الإنشاء: ' + error.message);
-        }
-    }
-
-    async function joinRoom() {
-        let code = document.getElementById('roomCode').value.trim().toUpperCase();
-        if (!code) return showToast('❌ أدخل الكود');
-        
-        code = code.replace(/\s+/g, '');
-        showToast('🔍 جاري البحث عن الغرفة...');
-        
-        try {
-            const snapshot = await db.collection('rooms').where('code', '==', code).get();
-            
-            if (snapshot.empty) {
-                return showToast('❌ الكود غير صحيح - تأكد من كتابته بشكل صحيح');
-            }
-
-            const roomDoc = snapshot.docs[0];
-            const roomData = roomDoc.data();
-
-            if (roomData.members && roomData.members.includes(currentUser.uid)) {
-                showToast('أنت بالفعل عضو في هذه المساحة');
-                openChat(roomDoc.id, roomData.name, roomData.code, roomData.owner);
-                return;
-            }
-
-            await roomDoc.ref.update({
-                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
-            });
-            
-            showToast('✅ تم الانضمام إلى المساحة');
-            document.getElementById('roomCode').value = '';
-            openChat(roomDoc.id, roomData.name, roomData.code, roomData.owner);
-            
-        } catch (error) {
-            showToast('❌ فشل الانضمام: ' + error.message);
-        }
     }
 
     function openChat(roomId, name, code, ownerId) {
@@ -598,6 +715,37 @@
             input.value = '';
         }).catch(() => showToast('❌ فشل الإرسال'));
     }
+
+    // ================== دوال التصحيح ==================
+    function toggleDebugPanel() {
+        const panel = document.getElementById('debugPanel');
+        panel.classList.toggle('visible');
+    }
+
+    async function debugShowAllRooms() {
+        const handler = new RoomHandler(db, currentUser);
+        const result = await handler.debugShowAllRooms();
+        document.getElementById('debugResult').innerHTML = result;
+    }
+
+    async function debugFixRoomCode() {
+        const handler = new RoomHandler(db, currentUser);
+        const result = await handler.fixRoomCodes();
+        document.getElementById('debugResult').innerHTML = result;
+    }
+
+    // ================== دوال عامة للوصول من HTML ==================
+    window.signIn = signIn;
+    window.signUp = signUp;
+    window.logout = logout;
+    window.createRoom = createRoom;
+    window.joinRoom = joinRoom;
+    window.leaveChat = leaveChat;
+    window.sendMsg = sendMsg;
+    window.copyCode = copyCode;
+    window.toggleDebugPanel = toggleDebugPanel;
+    window.debugShowAllRooms = debugShowAllRooms;
+    window.debugFixRoomCode = debugFixRoomCode;
 </script>
 </body>
 </html>
