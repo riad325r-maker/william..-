@@ -253,112 +253,176 @@
     });
 
     // ================== إدارة الغرف ==================
-    function loadRooms() {
-        if (!currentUser) return;
-        // إلغاء الاستماع السابق
-        if (unsubscribeRooms) unsubscribeRooms();
+function loadRooms() {
+    if (!currentUser) return;
+    if (unsubscribeRooms) unsubscribeRooms();
 
-        const loader = document.getElementById('roomsLoader');
-        loader.style.display = 'block';
+    const loader = document.getElementById('roomsLoader');
+    loader.style.display = 'block';
 
-        unsubscribeRooms = db.collection('rooms')
-            .where('members', 'array-contains', currentUser.uid)
-            .onSnapshot(snapshot => {
-                loader.style.display = 'none';
-                const list = document.getElementById('roomsList');
-                list.innerHTML = ''; // آمن لأننا نستخدم createElement
+    unsubscribeRooms = db.collection('rooms')
+        .where('members', 'array-contains', currentUser.uid)
+        .onSnapshot(snapshot => {
+            loader.style.display = 'none';
+            const list = document.getElementById('roomsList');
+            list.innerHTML = ''; 
 
-                if (snapshot.empty) {
-                    list.innerHTML = '<div class="loader">لا توجد مساحات بعد. أنشئ واحدة!</div>';
-                    return;
-                }
+            if (snapshot.empty) {
+                list.innerHTML = '<div class="loader">لا توجد مساحات بعد. أنشئ واحدة!</div>';
+                return;
+            }
 
-                snapshot.forEach(doc => {
-                    const room = doc.data();
-                    const roomId = doc.id;
+            snapshot.forEach(doc => {
+                const room = doc.data();
+                const roomId = doc.id;
 
-                    const div = document.createElement('div');
-                    div.className = 'room-item';
-                    div.setAttribute('data-room-id', roomId);
+                const div = document.createElement('div');
+                div.className = 'room-item';
+                div.setAttribute('data-room-id', roomId);
 
-                    const infoDiv = document.createElement('div');
-                    const nameStrong = document.createElement('strong');
-                    nameStrong.textContent = room.name;
-                    const codeSmall = document.createElement('small');
-                    codeSmall.style.color = 'var(--text-dim)';
-                    codeSmall.textContent = `كود: ${room.code}`;
+                const infoDiv = document.createElement('div');
+                const nameStrong = document.createElement('strong');
+                nameStrong.textContent = room.name || 'بدون اسم';
+                
+                const codeSmall = document.createElement('small');
+                codeSmall.style.color = 'var(--text-dim)';
+                codeSmall.style.display = 'block';
+                codeSmall.textContent = `🔑 الكود: ${room.code || 'لا يوجد'}`;
 
-                    infoDiv.appendChild(nameStrong);
-                    infoDiv.appendChild(codeSmall);
+                infoDiv.appendChild(nameStrong);
+                infoDiv.appendChild(codeSmall);
 
-                    const arrowSpan = document.createElement('span');
-                    arrowSpan.style.fontSize = '18px';
-                    arrowSpan.innerHTML = '<i class="fas fa-arrow-left"></i>';
+                const arrowSpan = document.createElement('span');
+                arrowSpan.style.fontSize = '18px';
+                arrowSpan.innerHTML = '<i class="fas fa-arrow-left"></i>';
 
-                    div.appendChild(infoDiv);
-                    div.appendChild(arrowSpan);
+                div.appendChild(infoDiv);
+                div.appendChild(arrowSpan);
 
-                    div.addEventListener('click', () => openChat(roomId, room.name, room.code, room.owner));
+                div.addEventListener('click', () => openChat(roomId, room.name, room.code, room.owner));
 
-                    list.appendChild(div);
-                });
-            }, error => {
-                loader.style.display = 'none';
-                showToast('خطأ في تحميل الغرف');
+                list.appendChild(div);
             });
-    }
+        }, error => {
+            loader.style.display = 'none';
+            showToast('خطأ في تحميل الغرف: ' + error.message);
+        });
+}
 
-    async function createRoom() {
-        const name = document.getElementById('roomName').value.trim();
-        const code = document.getElementById('roomCode').value.trim().toUpperCase();
-        if (!name || !code) return showToast('أدخل اسم المساحة والكود');
+async function createRoom() {
+    const name = document.getElementById('roomName').value.trim();
+    let code = document.getElementById('roomCode').value.trim().toUpperCase();
+    
+    if (!name || !code) return showToast('أدخل اسم المساحة والكود');
+    
+    // منع المسافات في الكود
+    code = code.replace(/\s+/g, '');
+    if (code.length < 3) return showToast('الكود يجب أن يكون 3 أحرف على الأقل');
 
+    try {
         // التحقق من عدم تكرار الكود
         const existing = await db.collection('rooms').where('code', '==', code).get();
-        if (!existing.empty) return showToast('هذا الكود مستخدم بالفعل، اختر كوداً آخر');
-
-        try {
-            await db.collection('rooms').add({
-                name,
-                code,
-                owner: currentUser.uid,
-                members: [currentUser.uid],
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            showToast('تم إنشاء المساحة بنجاح');
-            document.getElementById('roomName').value = '';
-            document.getElementById('roomCode').value = '';
-        } catch (error) {
-            showToast('فشل الإنشاء: ' + error.message);
+        if (!existing.empty) {
+            return showToast('هذا الكود مستخدم بالفعل، اختر كوداً آخر');
         }
+
+        await db.collection('rooms').add({
+            name,
+            code,
+            owner: currentUser.uid,
+            members: [currentUser.uid],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        showToast('✅ تم إنشاء المساحة بنجاح');
+        document.getElementById('roomName').value = '';
+        document.getElementById('roomCode').value = '';
+        
+    } catch (error) {
+        showToast('❌ فشل الإنشاء: ' + error.message);
     }
+}
 
-    async function joinRoom() {
-        const code = document.getElementById('roomCode').value.trim().toUpperCase();
-        if (!code) return showToast('أدخل الكود');
-
+async function joinRoom() {
+    let code = document.getElementById('roomCode').value.trim().toUpperCase();
+    if (!code) return showToast('أدخل الكود');
+    
+    // تنظيف الكود من المسافات
+    code = code.replace(/\s+/g, '');
+    
+    showToast('جاري البحث عن الغرفة...');
+    
+    try {
         const snapshot = await db.collection('rooms').where('code', '==', code).get();
-        if (snapshot.empty) return showToast('الكود غير صحيح');
+        
+        if (snapshot.empty) {
+            return showToast('❌ الكود غير صحيح - تأكد من كتابته بشكل صحيح');
+        }
 
         const roomDoc = snapshot.docs[0];
         const roomData = roomDoc.data();
 
         // التحقق مما إذا كان العضو موجوداً بالفعل
         if (roomData.members && roomData.members.includes(currentUser.uid)) {
-            return showToast('أنت بالفعل عضو في هذه المساحة');
+            showToast('أنت بالفعل عضو في هذه المساحة');
+            // فتح الغرفة مباشرة
+            openChat(roomDoc.id, roomData.name, roomData.code, roomData.owner);
+            return;
         }
 
-        try {
-            await roomDoc.ref.update({
-                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
-            });
-            showToast('تم الانضمام إلى المساحة');
-            document.getElementById('roomCode').value = '';
-        } catch (error) {
-            showToast('فشل الانضمام: ' + error.message);
-        }
+        // إضافة العضو الجديد
+        await roomDoc.ref.update({
+            members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+        });
+        
+        showToast('✅ تم الانضمام إلى المساحة');
+        document.getElementById('roomCode').value = '';
+        
+        // فتح الغرفة مباشرة بعد الانضمام
+        openChat(roomDoc.id, roomData.name, roomData.code, roomData.owner);
+        
+    } catch (error) {
+        showToast('❌ فشل الانضمام: ' + error.message);
+    }
+}
+
+function openChat(roomId, name, code, ownerId) {
+    if (unsubscribeMessages) unsubscribeMessages();
+
+    currentRoomId = roomId;
+    currentRoomOwner = ownerId;
+
+    document.getElementById('chatTitle').textContent = name;
+    
+    // عرض الكود بشكل واضح مع زر نسخ
+    const codeDisplay = document.getElementById('roomCodeDisplay');
+    codeDisplay.innerHTML = `
+        <span style="display: flex; align-items: center; gap: 5px; background: var(--card); padding: 5px 12px; border-radius: 20px; cursor: pointer;" onclick="copyCode('${code}')">
+            <i class="fas fa-copy"></i>
+            <span style="font-weight: bold; letter-spacing: 1px;">${code}</span>
+        </span>
+    `;
+
+    const delBtn = document.getElementById('deleteRoomBtn');
+    if (ownerId === currentUser.uid) {
+        delBtn.style.display = 'block';
+        delBtn.onclick = () => deleteRoom(roomId);
+    } else {
+        delBtn.style.display = 'none';
     }
 
+    showScreen('chat');
+    loadMessages(roomId);
+}
+
+// دالة نسخ الكود المعدلة
+function copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        showToast('📋 تم نسخ الكود: ' + code);
+    }).catch(() => {
+        showToast('فشل النسخ');
+    });
+}
     // ================== الدردشة ==================
     function openChat(roomId, name, code, ownerId) {
         // إلغاء استماع الرسائل السابق
