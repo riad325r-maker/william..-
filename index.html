@@ -2,162 +2,162 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>William Rooms - Pro</title>
+    <!-- Google Fonts & Font Awesome -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
             --primary: #6366f1;
-            --bg: #f1f5f9;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
             --card: #ffffff;
             --text: #1e293b;
-            --gray: #94a3b8;
+            --text-dim: #64748b;
+            --sent: linear-gradient(135deg, #6366f1, #a855f7);
+            --received: #e2e8f0;
+            --danger: #ef4444;
             --success: #10b981;
         }
 
-        /* ضبط المقاسات لتكون ملء الشاشة تماماً */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; -webkit-tap-highlight-color: transparent; }
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --received: #334155;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; transition: background 0.3s, color 0.2s; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; }
         
-        html, body { 
-            height: 100%; 
-            width: 100%; 
-            overflow: hidden; /* يمنع التمرير الغريب في الجوال */
-            background-color: var(--bg);
-        }
-
-        .container { 
-            width: 100%; 
-            max-width: 500px; /* لضمان شكل جميل على التابلت */
-            height: 100%; 
-            margin: 0 auto; 
-            background: var(--card);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }
-
-        .screen { 
-            display: none; 
-            flex-direction: column; 
-            height: 100%; 
-            padding: 20px; 
-            animation: slideUp 0.3s ease-out;
-        }
+        .container { max-width: 500px; margin: 0 auto; width: 100%; min-height: 100vh; display: flex; flex-direction: column; position: relative; background: var(--bg); }
+        
+        /* Screens */
+        .screen { display: none; padding: 20px; animation: fadeIn 0.3s ease; flex-direction: column; flex: 1; }
         .screen.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        h1 { color: var(--primary); text-align: center; margin-bottom: 30px; font-weight: 700; }
-        h3 { font-size: 16px; margin-bottom: 12px; color: var(--text); display: flex; align-items: center; gap: 8px; }
-
-        /* ستايل المدخلات (Inputs) */
-        input { 
-            width: 100%; 
-            padding: 15px; 
-            border-radius: 12px; 
-            border: 1.5px solid #e2e8f0; 
-            background: #f8fafc; 
-            margin-bottom: 15px; 
-            font-size: 16px; 
-            transition: 0.2s;
-            outline: none;
-        }
-        input:focus { border-color: var(--primary); background: #fff; }
-
-        .btn { 
-            padding: 15px; 
-            border-radius: 12px; 
-            border: none; 
-            background: var(--primary); 
-            color: white; 
-            font-weight: bold; 
-            font-size: 16px; 
-            cursor: pointer;
-            width: 100%;
-            transition: 0.2s;
-        }
-        .btn:active { transform: scale(0.98); opacity: 0.9; }
-
-        /* شاشة الغرف: تقسيم واضح */
-        .section { margin-bottom: 25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; }
-        .rooms-list { flex: 1; overflow-y: auto; padding-top: 10px; }
-        .room-card { 
-            background: #f8fafc; 
-            padding: 15px; 
-            border-radius: 12px; 
-            margin-bottom: 10px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            border-right: 4px solid var(--primary);
-        }
-
-        /* شاشة الشات */
-        .chat-header { padding: 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px; }
-        .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #fefefe; }
-        .msg { padding: 12px 16px; border-radius: 15px; max-width: 80%; font-size: 15px; position: relative; }
-        .msg.sent { align-self: flex-start; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
-        .msg.received { align-self: flex-end; background: #e2e8f0; color: var(--text); border-bottom-left-radius: 2px; }
+        /* Cards */
+        .card { background: var(--card); border-radius: 24px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.05); }
         
-        .input-area { padding: 15px; display: flex; gap: 10px; background: white; border-top: 1px solid #eee; }
-        .input-area input { margin-bottom: 0; border-radius: 25px; }
-        .circle-btn { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--primary); color: white; border: none; font-size: 20px; }
+        h1 { font-size: 2rem; background: var(--sent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 30px; }
+        
+        input { width: 100%; padding: 14px 18px; border-radius: 15px; border: 2px solid transparent; background: var(--bg); color: var(--text); margin-bottom: 12px; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--primary); }
+        
+        .btn { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 15px; cursor: pointer; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; transition: 0.2s; }
+        .btn:hover { background: var(--primary-hover); transform: scale(1.02); }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); border-color: var(--success); }
+        .btn-success:hover { background: #0b9b6e; }
+        .btn-danger { background: #fee2e2; color: #ef4444; border: none; padding: 8px 15px; border-radius: 10px; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .btn-danger:hover { background: #fecaca; }
+
+        /* Chat UI */
+        .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 5px; position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--text-dim); }
+        .messages { flex: 1; overflow-y: auto; padding: 10px 0; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+        
+        .msg { max-width: 85%; padding: 12px 16px; border-radius: 20px; position: relative; line-height: 1.5; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); word-wrap: break-word; }
+        .msg.sent { align-self: flex-start; background: var(--sent); color: white; border-bottom-right-radius: 4px; }
+        .msg.received { align-self: flex-end; background: var(--received); color: var(--text); border-bottom-left-radius: 4px; }
+        
+        .msg-info { display: flex; align-items: center; gap: 8px; font-size: 11px; margin-top: 5px; opacity: 0.8; justify-content: flex-end; flex-wrap: wrap; }
+        .status-seen { color: #38bdf8; }
+        .delete-msg { background: none; border: none; color: inherit; cursor: pointer; font-size: 12px; opacity: 0.5; transition: 0.2s; }
+        .delete-msg:hover { opacity: 1; }
+
+        .input-area { display: flex; gap: 10px; padding: 15px; background: var(--card); border-radius: 30px; margin-bottom: 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.02); }
+        .input-area input { margin-bottom: 0; background: transparent; }
+        .btn-send { background: var(--primary); width: 50px; height: 45px; border-radius: 20px; color: white; border: none; cursor: pointer; font-size: 20px; transition: 0.2s; }
+        .btn-send:hover { background: var(--primary-hover); }
+
+        .room-item { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 15px; border-radius: 18px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
+        .room-item:hover { border-color: var(--primary); transform: translateX(-5px); }
+
+        /* Floating Theme Toggle */
+        .theme-toggle { position: fixed; top: 20px; left: 20px; background: var(--card); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; font-size: 22px; z-index: 1000; transition: 0.2s; }
+        .theme-toggle:hover { transform: rotate(15deg); }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card); color: var(--text); padding: 10px 25px; border-radius: 30px; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 1001; pointer-events: none; box-shadow: 0 5px 20px rgba(0,0,0,0.15); border: 1px solid var(--primary); }
+        .toast.show { opacity: 1; }
+
+        /* Loading */
+        .loader { text-align: center; padding: 20px; color: var(--text-dim); }
+        .typing-indicator { display: flex; gap: 3px; padding: 10px; background: var(--received); border-radius: 20px; width: fit-content; }
+        .typing-indicator span { width: 8px; height: 8px; background: var(--text-dim); border-radius: 50%; animation: typing 1s infinite; }
+        @keyframes typing { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
     </style>
 </head>
-<body>
+<body data-theme="light">
+
+<button class="theme-toggle" id="themeToggle" aria-label="تغيير الثيم"><i class="fas fa-moon"></i></button>
+<div id="toast" class="toast"></div>
 
 <div class="container">
+    <!-- شاشة تسجيل الدخول -->
     <div id="loginScreen" class="screen active">
-        <h1>William Rooms</h1>
-        <input type="email" id="email" placeholder="البريد الإلكتروني">
-        <input type="password" id="password" placeholder="كلمة المرور">
-        <button class="btn" onclick="signIn()">دخول</button>
-        <p style="text-align: center; margin-top: 15px; color: var(--gray); font-size: 14px;" onclick="signUp()">ليس لديك حساب؟ سجل الآن</p>
+        <h1><i class="fas fa-comments"></i> William Rooms</h1>
+        <div class="card">
+            <input type="email" id="email" placeholder="البريد الإلكتروني" autocomplete="email">
+            <input type="password" id="password" placeholder="كلمة المرور" autocomplete="current-password">
+            <button class="btn" onclick="signIn()"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</button>
+            <button class="btn btn-outline" style="margin-top: 10px;" onclick="signUp()"><i class="fas fa-user-plus"></i> إنشاء حساب جديد</button>
+        </div>
     </div>
 
+    <!-- الشاشة الرئيسية (الغرف) -->
     <div id="mainScreen" class="screen">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 id="welcomeText">غرفي</h2>
-            <button onclick="logout()" style="color: red; border:none; background:none;">خروج</button>
+        <div class="chat-header">
+            <div>
+                <span style="color: var(--text-dim); display: block; font-size: 12px;"><i class="fas fa-user"></i> مرحباً،</span>
+                <strong id="userName" style="font-size: 18px;">...</strong>
+            </div>
+            <button onclick="logout()" class="btn-danger" style="padding: 8px 15px;"><i class="fas fa-sign-out-alt"></i> خروج</button>
         </div>
 
-        <div class="section">
-            <h3>➕ إنشاء غرفة جديدة</h3>
-            <input type="text" id="newRoomName" placeholder="اسم الغرفة (مثال: شلة الاستراحة)">
-            <input type="text" id="newRoomCode" placeholder="كود خاص للغرفة (اختياري)">
-            <button class="btn" onclick="createRoom()">إنشاء الغرفة</button>
+        <div class="card" style="margin-top: 10px;">
+            <input type="text" id="roomName" placeholder="اسم المساحة (مثلاً: ذكرياتنا)">
+            <input type="text" id="roomCode" placeholder="كود سري (شاركه للانضمام)" maxlength="20">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="createRoom()"><i class="fas fa-plus"></i> إنشاء</button>
+                <button class="btn btn-success" onclick="joinRoom()"><i class="fas fa-door-open"></i> انضمام</button>
+            </div>
         </div>
 
-        <div class="section">
-            <h3>🔗 انضمام لغرفة سابقة</h3>
-            <input type="text" id="joinCode" placeholder="اكتب كود الغرفة هنا...">
-            <button class="btn" style="background: var(--success);" onclick="joinRoom()">انضمام الآن</button>
-        </div>
-
-        <h3>محادثاتك</h3>
+        <h3 style="margin: 10px 5px;"><i class="fas fa-layer-group"></i> مساحاتك الخاصة</h3>
         <div id="roomsList" class="rooms-list"></div>
+        <div id="roomsLoader" class="loader" style="display: none;">جاري التحميل...</div>
     </div>
 
-    <div id="chatScreen" class="screen" style="padding: 0;">
+    <!-- شاشة الدردشة -->
+    <div id="chatScreen" class="screen">
         <div class="chat-header">
-            <button onclick="showScreen('main')" style="border:none; background:none; font-size: 20px;">🔙</button>
-            <strong id="currentChatName">اسم الغرفة</strong>
+            <button onclick="leaveChat()" class="btn-danger" style="padding: 8px 12px;"><i class="fas fa-arrow-right"></i> رجوع</button>
+            <div style="text-align: center; max-width: 200px;">
+                <h4 id="chatTitle" style="font-size: 16px;">الغرفة</h4>
+                <small id="roomCodeDisplay" onclick="copyCode()" style="color: var(--text-dim); cursor: pointer; font-size: 10px; display: block;"><i class="fas fa-copy"></i> اضغط لنسخ الكود</small>
+            </div>
+            <button id="deleteRoomBtn" class="btn-danger" style="display: none;"><i class="fas fa-trash"></i> حذف</button>
         </div>
-        <div id="messagesBox" class="messages"></div>
+        <div class="messages" id="messagesBox"></div>
         <div class="input-area">
-            <input type="text" id="msgInput" placeholder="اكتب هنا..." onkeypress="if(event.key==='Enter') sendMsg()">
-            <button class="circle-btn" onclick="sendMsg()">➤</button>
+            <input type="text" id="msgInput" placeholder="اكتب شيئاً جميلاً..." onkeypress="if(event.key==='Enter') sendMsg()">
+            <button class="btn-send" onclick="sendMsg()"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 </div>
 
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
-    // إعدادات Firebase
+    // ================== الإعدادات الأساسية ==================
     const firebaseConfig = {
         apiKey: "AIzaSyCYpL7ANTarOfbjudlur53Gxax-X2BZm1M",
         authDomain: "private-space-aad2a.firebaseapp.com",
@@ -166,103 +166,378 @@
         messagingSenderId: "59667950205",
         appId: "1:59667950205:web:05511e2ce4606a01ecdf14"
     };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    // ================== المتغيرات العامة ==================
     let currentUser = null;
     let currentRoomId = null;
+    let currentRoomOwner = null;
+    let unsubscribeRooms = null;
+    let unsubscribeMessages = null;
 
-    function showScreen(id) {
+    // ================== دوال مساعدة ==================
+    function showToast(message, duration = 2000) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id + 'Screen').classList.add('active');
+        document.getElementById(screenId + 'Screen').classList.add('active');
     }
 
-    // --- تسجيل ودخول ---
-    function signIn() {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        auth.signInWithEmailAndPassword(e, p).catch(err => alert("خطأ: " + err.message));
+    // الثيم
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.body.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
     }
+
+    function toggleTheme() {
+        const current = document.body.getAttribute('data-theme');
+        const newTheme = current === 'dark' ? 'light' : 'dark';
+        document.body.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+    }
+
+    function updateThemeIcon(theme) {
+        const icon = document.querySelector('#themeToggle i');
+        if (icon) {
+            icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    }
+
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    initTheme();
+
+    // ================== المصادقة ==================
     function signUp() {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        auth.createUserWithEmailAndPassword(e, p).catch(err => alert("خطأ: " + err.message));
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        if (!email || !password) return showToast('البريد الإلكتروني وكلمة المرور مطلوبان');
+        auth.createUserWithEmailAndPassword(email, password)
+            .catch(error => showToast('خطأ: ' + error.message));
     }
-    function logout() { auth.signOut(); }
+
+    function signIn() {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        auth.signInWithEmailAndPassword(email, password)
+            .catch(() => showToast('بيانات الدخول غير صحيحة'));
+    }
+
+    function logout() {
+        // إلغاء الاستماع قبل تسجيل الخروج
+        if (unsubscribeRooms) unsubscribeRooms();
+        if (unsubscribeMessages) unsubscribeMessages();
+        auth.signOut();
+    }
 
     auth.onAuthStateChanged(user => {
-        if(user) { currentUser = user; showScreen('main'); loadRooms(); }
-        else { showScreen('login'); }
+        if (user) {
+            currentUser = user;
+            document.getElementById('userName').textContent = user.email.split('@')[0] || 'مستخدم';
+            showScreen('main');
+            loadRooms();
+        } else {
+            showScreen('login');
+            // تنظيف أي استماع قديم
+            if (unsubscribeRooms) unsubscribeRooms();
+            if (unsubscribeMessages) unsubscribeMessages();
+        }
     });
 
-    // --- إدارة الغرف (التعديل المطلوب) ---
-    function createRoom() {
-        const name = document.getElementById('newRoomName').value;
-        const code = document.getElementById('newRoomCode').value.toUpperCase();
-        if(!name || !code) return alert("اكمل البيانات");
-        db.collection('rooms').add({
-            name, code, members: [currentUser.uid], createdAt: new Date()
-        }).then(() => {
-            document.getElementById('newRoomName').value = '';
-            document.getElementById('newRoomCode').value = '';
-        });
-    }
-
-    function joinRoom() {
-        const code = document.getElementById('joinCode').value.toUpperCase();
-        if(!code) return alert("أدخل الكود أولاً");
-        db.collection('rooms').where('code', '==', code).get().then(snap => {
-            if(snap.empty) return alert("الكود غير صحيح");
-            snap.docs[0].ref.update({
-                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
-            }).then(() => {
-                alert("تم الانضمام!");
-                document.getElementById('joinCode').value = '';
-            });
-        });
-    }
-
+    // ================== إدارة الغرف ==================
     function loadRooms() {
-        db.collection('rooms').where('members', 'array-contains', currentUser.uid).onSnapshot(snap => {
-            const list = document.getElementById('roomsList');
-            list.innerHTML = '';
-            snap.forEach(doc => {
-                const room = doc.data();
-                list.innerHTML += `<div class="room-card" onclick="openChat('${doc.id}', '${room.name}')">
-                    <span>${room.name}</span>
-                    <small style="color:gray">#${room.code}</small>
-                </div>`;
+        if (!currentUser) return;
+        // إلغاء الاستماع السابق
+        if (unsubscribeRooms) unsubscribeRooms();
+
+        const loader = document.getElementById('roomsLoader');
+        loader.style.display = 'block';
+
+        unsubscribeRooms = db.collection('rooms')
+            .where('members', 'array-contains', currentUser.uid)
+            .onSnapshot(snapshot => {
+                loader.style.display = 'none';
+                const list = document.getElementById('roomsList');
+                list.innerHTML = ''; // آمن لأننا نستخدم createElement
+
+                if (snapshot.empty) {
+                    list.innerHTML = '<div class="loader">لا توجد مساحات بعد. أنشئ واحدة!</div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const room = doc.data();
+                    const roomId = doc.id;
+
+                    const div = document.createElement('div');
+                    div.className = 'room-item';
+                    div.setAttribute('data-room-id', roomId);
+
+                    const infoDiv = document.createElement('div');
+                    const nameStrong = document.createElement('strong');
+                    nameStrong.textContent = room.name;
+                    const codeSmall = document.createElement('small');
+                    codeSmall.style.color = 'var(--text-dim)';
+                    codeSmall.textContent = `كود: ${room.code}`;
+
+                    infoDiv.appendChild(nameStrong);
+                    infoDiv.appendChild(codeSmall);
+
+                    const arrowSpan = document.createElement('span');
+                    arrowSpan.style.fontSize = '18px';
+                    arrowSpan.innerHTML = '<i class="fas fa-arrow-left"></i>';
+
+                    div.appendChild(infoDiv);
+                    div.appendChild(arrowSpan);
+
+                    div.addEventListener('click', () => openChat(roomId, room.name, room.code, room.owner));
+
+                    list.appendChild(div);
+                });
+            }, error => {
+                loader.style.display = 'none';
+                showToast('خطأ في تحميل الغرف');
             });
-        });
     }
 
-    function openChat(id, name) {
-        currentRoomId = id;
-        document.getElementById('currentChatName').textContent = name;
+    async function createRoom() {
+        const name = document.getElementById('roomName').value.trim();
+        const code = document.getElementById('roomCode').value.trim().toUpperCase();
+        if (!name || !code) return showToast('أدخل اسم المساحة والكود');
+
+        // التحقق من عدم تكرار الكود
+        const existing = await db.collection('rooms').where('code', '==', code).get();
+        if (!existing.empty) return showToast('هذا الكود مستخدم بالفعل، اختر كوداً آخر');
+
+        try {
+            await db.collection('rooms').add({
+                name,
+                code,
+                owner: currentUser.uid,
+                members: [currentUser.uid],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showToast('تم إنشاء المساحة بنجاح');
+            document.getElementById('roomName').value = '';
+            document.getElementById('roomCode').value = '';
+        } catch (error) {
+            showToast('فشل الإنشاء: ' + error.message);
+        }
+    }
+
+    async function joinRoom() {
+        const code = document.getElementById('roomCode').value.trim().toUpperCase();
+        if (!code) return showToast('أدخل الكود');
+
+        const snapshot = await db.collection('rooms').where('code', '==', code).get();
+        if (snapshot.empty) return showToast('الكود غير صحيح');
+
+        const roomDoc = snapshot.docs[0];
+        const roomData = roomDoc.data();
+
+        // التحقق مما إذا كان العضو موجوداً بالفعل
+        if (roomData.members && roomData.members.includes(currentUser.uid)) {
+            return showToast('أنت بالفعل عضو في هذه المساحة');
+        }
+
+        try {
+            await roomDoc.ref.update({
+                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+            });
+            showToast('تم الانضمام إلى المساحة');
+            document.getElementById('roomCode').value = '';
+        } catch (error) {
+            showToast('فشل الانضمام: ' + error.message);
+        }
+    }
+
+    // ================== الدردشة ==================
+    function openChat(roomId, name, code, ownerId) {
+        // إلغاء استماع الرسائل السابق
+        if (unsubscribeMessages) unsubscribeMessages();
+
+        currentRoomId = roomId;
+        currentRoomOwner = ownerId;
+
+        document.getElementById('chatTitle').textContent = name;
+        document.getElementById('roomCodeDisplay').innerHTML = `<i class="fas fa-copy"></i> ${code} (اضغط للنسخ)`;
+
+        const delBtn = document.getElementById('deleteRoomBtn');
+        if (ownerId === currentUser.uid) {
+            delBtn.style.display = 'block';
+            delBtn.onclick = () => deleteRoom(roomId);
+        } else {
+            delBtn.style.display = 'none';
+        }
+
         showScreen('chat');
-        loadMessages(id);
+        loadMessages(roomId);
+    }
+
+    function leaveChat() {
+        if (unsubscribeMessages) unsubscribeMessages();
+        showScreen('main');
+    }
+
+    async function deleteRoom(roomId) {
+        if (!confirm('هل أنت متأكد من حذف المساحة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+
+        try {
+            // حذف جميع الرسائل أولاً (يجب حذف المجموعة الفرعية)
+            const messagesRef = db.collection('rooms').doc(roomId).collection('messages');
+            const messagesSnapshot = await messagesRef.get();
+            const batch = db.batch();
+            messagesSnapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+
+            // ثم حذف وثيقة الغرفة
+            await db.collection('rooms').doc(roomId).delete();
+
+            showToast('تم الحذف');
+            showScreen('main');
+        } catch (error) {
+            showToast('خطأ في الحذف: ' + error.message);
+        }
+    }
+
+    function copyCode() {
+        const code = document.getElementById('roomCodeDisplay').textContent.split(' ')[0]; // استخراج الكود
+        navigator.clipboard.writeText(code).then(() => showToast('تم نسخ الكود!'));
     }
 
     function loadMessages(roomId) {
-        db.collection('rooms').doc(roomId).collection('messages').orderBy('time').onSnapshot(snap => {
-            const box = document.getElementById('messagesBox');
-            box.innerHTML = '';
-            snap.forEach(doc => {
-                const m = doc.data();
-                const isMe = m.sender === currentUser.uid;
-                box.innerHTML += `<div class="msg ${isMe ? 'sent' : 'received'}">${m.text}</div>`;
+        if (!roomId) return;
+
+        const box = document.getElementById('messagesBox');
+        box.innerHTML = ''; // تنظيف آمن
+
+        unsubscribeMessages = db.collection('rooms').doc(roomId)
+            .collection('messages')
+            .orderBy('time')
+            .onSnapshot(snapshot => {
+                // تحديث الرسائل
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        const msg = change.doc.data();
+                        addMessageToBox(change.doc.id, msg);
+                    } else if (change.type === 'modified') {
+                        // يمكن تحديث حالة الرؤية أو التعديل
+                        const msg = change.doc.data();
+                        updateMessageInBox(change.doc.id, msg);
+                    } else if (change.type === 'removed') {
+                        removeMessageFromBox(change.doc.id);
+                    }
+                });
+
+                // تمرير إلى الأسفل عند الإضافة
+                box.scrollTop = box.scrollHeight;
+            }, error => {
+                showToast('فشل تحميل الرسائل');
             });
-            box.scrollTop = box.scrollHeight;
-        });
+    }
+
+    // إضافة رسالة إلى الصندوق
+    function addMessageToBox(msgId, msgData) {
+        const box = document.getElementById('messagesBox');
+        const isMe = msgData.sender === currentUser.uid;
+
+        // تحديد وقت الرسالة
+        let timeStr = 'الآن';
+        if (msgData.time) {
+            const date = msgData.time.toDate();
+            timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // إنشاء عناصر DOM
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `msg ${isMe ? 'sent' : 'received'}`;
+        msgDiv.setAttribute('data-msg-id', msgId);
+
+        const textDiv = document.createElement('div');
+        textDiv.textContent = msgData.text; // آمن
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'msg-info';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.textContent = timeStr;
+
+        infoDiv.appendChild(timeSpan);
+
+        // حالة الرؤية للمرسل
+        if (isMe) {
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'status-seen';
+            statusSpan.textContent = msgData.seen ? '✔️✔️' : '✔️';
+            infoDiv.appendChild(statusSpan);
+        } else {
+            // إذا كانت الرسالة غير مقروءة، تحديث حالتها إلى مقروءة
+            if (!msgData.seen) {
+                db.collection('rooms').doc(currentRoomId).collection('messages').doc(msgId).update({ seen: true });
+            }
+
+            // إضافة زر حذف للرسائل المستقبلة (يمكن للمستلم حذفها)
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-msg';
+            deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteMessage(msgId);
+            };
+            infoDiv.appendChild(deleteBtn);
+        }
+
+        msgDiv.appendChild(textDiv);
+        msgDiv.appendChild(infoDiv);
+        box.appendChild(msgDiv);
+    }
+
+    function updateMessageInBox(msgId, msgData) {
+        // تحديث حالة الرؤية
+        const existingMsg = document.querySelector(`.msg[data-msg-id="${msgId}"]`);
+        if (existingMsg && msgData.sender === currentUser.uid) {
+            const statusSpan = existingMsg.querySelector('.status-seen');
+            if (statusSpan) statusSpan.textContent = msgData.seen ? '✔️✔️' : '✔️';
+        }
+    }
+
+    function removeMessageFromBox(msgId) {
+        const msg = document.querySelector(`.msg[data-msg-id="${msgId}"]`);
+        if (msg) msg.remove();
+    }
+
+    // حذف رسالة
+    async function deleteMessage(msgId) {
+        if (!confirm('حذف هذه الرسالة؟')) return;
+        try {
+            await db.collection('rooms').doc(currentRoomId).collection('messages').doc(msgId).delete();
+            showToast('تم حذف الرسالة');
+        } catch (error) {
+            showToast('فشل الحذف');
+        }
     }
 
     function sendMsg() {
         const input = document.getElementById('msgInput');
-        if(!input.value) return;
+        const text = input.value.trim();
+        if (!text || !currentRoomId) return;
+
         db.collection('rooms').doc(currentRoomId).collection('messages').add({
-            text: input.value, sender: currentUser.uid, time: new Date()
-        });
-        input.value = '';
+            text: text,
+            sender: currentUser.uid,
+            time: firebase.firestore.FieldValue.serverTimestamp(),
+            seen: false
+        }).then(() => {
+            input.value = '';
+        }).catch(() => showToast('فشل الإرسال'));
     }
 </script>
 </body>
