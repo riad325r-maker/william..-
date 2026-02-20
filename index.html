@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مساحتنا الخاصة - نسخة مطورة 🚀</title>
+    <title>William Rooms</title>
     <link rel="manifest" href="manifest.json"> <!-- للتثبيت كـ PWA -->
     <style>
         /* نفس التنسيقات الجميلة التي صممتها مع إضافات جديدة */
@@ -436,7 +436,7 @@
     <div class="container" id="app">
         <!-- شاشة تسجيل الدخول -->
         <div id="loginScreen" class="screen active">
-            <h1>🌟 مساحتنا الخاصة (نسخة مطورة)</h1>
+            <h1>William Rooms</h1>
             
             <!-- زر الوضع الليلي -->
             <div style="text-align: left; margin-bottom: 10px;">
@@ -469,29 +469,29 @@
 
             <!-- إنشاء مساحة جديدة -->
             <div style="margin: 20px 0;">
-                <h3>➕ إنشاء مساحة جديدة</h3>
+                <h3>إنشاء غرفة جديده</h3>
                 <input type="text" id="newRoomName" placeholder="اسم المساحة (مثال: أنا وصديقي)">
                 <div class="action-buttons">
-                    <button class="action-btn" onclick="createRoom()">🚀 إنشاء</button>
+                    <button class="action-btn" onclick="createRoom()">إنشاء</button>
                     <button class="action-btn" onclick="generateRandomCode()">🎲 كود عشوائي</button>
                 </div>
             </div>
 
             <!-- الانضمام لمساحة -->
             <div style="margin: 20px 0;">
-                <h3>🔑 الانضمام لمساحة موجودة</h3>
-                <input type="text" id="joinRoomCode" placeholder="كود المساحة" maxlength="8">
+                <h3>الانضمام الى غرفه</h3>
+                <input type="text" id="joinRoomCode" placeholder="كود الغرفه" maxlength="8">
                 <button class="btn btn-secondary" onclick="joinRoom()">انضمام</button>
             </div>
 
             <!-- قائمة المساحات -->
-            <h3>📁 مساحاتي الخاصة</h3>
+            <h3>غرفتي الخاصه</h3>
             <div id="roomsList"></div>
             
             <!-- إحصائيات سريعة -->
             <div class="info-box" style="margin-top: 20px; font-size: 14px;">
                 <span id="totalMessages">0</span> رسالة متبادلة • 
-                <span id="totalRooms">0</span> مساحة • 
+                <span id="totalRooms">0</span> غرف • 
                 <span id="onlineFriends">0</span> متصل
             </div>
         </div>
@@ -539,7 +539,7 @@
     </div>
     
     <div class="footer">
-        مساحتنا الخاصة © 2026 - نسخة مطورة 🚀
+        William's Rooms 
     </div>
 
     <!-- Firebase SDK -->
@@ -1144,7 +1144,7 @@
                 membersUids: [currentUser.uid],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
-                showNotification(`✅ تم إنشاء المساحة!\nكود المساحة: ${code}`, 'success');
+                showNotification(`تم إنشاء الغرفه\nكود الغرفه: ${code}`, 'success');
                 document.getElementById('newRoomName').value = '';
             }).catch(error => showNotification(error.message, 'error'));
         }
@@ -1159,7 +1159,7 @@
             db.collection('rooms').where('code', '==', code).get()
                 .then((snapshot) => {
                     if (snapshot.empty) {
-                        showNotification('❌ كود المساحة غير صحيح', 'error');
+                        showNotification('❌ كود الغرفه غير صحيح', 'error');
                         return;
                     }
 
@@ -1168,7 +1168,7 @@
 
                     const isMember = roomData.members.some(m => m.email === currentUser.email);
                     if (isMember) {
-                        showNotification('أنت بالفعل عضو في هذه المساحة', 'info');
+                        showNotification('أنت بالفعل عضو في هذه الغرفه', 'info');
                         openRoom(roomDoc.id);
                         return;
                     }
@@ -1189,7 +1189,7 @@
                         members: updatedMembers,
                         membersUids: updatedUids
                     }).then(() => {
-                        showNotification('✅ تم الانضمام للمساحة بنجاح', 'success');
+                        showNotification('✅ تم الانضمام للغرفه بنجاح', 'success');
                         document.getElementById('joinRoomCode').value = '';
                     });
                 })
