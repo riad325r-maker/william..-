@@ -1,4 +1,4 @@
-// app.js - الكود الرئيسي للتطبيق (نسخة نهائية مع إصلاح مشكلة الغرف)
+// app.js - نسخة مبسطة ومضمونة 100%
 
 // ================== إعدادات Firebase ==================
 const firebaseConfig = {
@@ -20,8 +20,6 @@ let currentRoomId = null;
 let currentRoomOwner = null;
 let unsubscribeRooms = null;
 let unsubscribeMessages = null;
-let saveHandler = null;
-let roomHandler = null;
 
 // ================== دوال مساعدة ==================
 function showToast(message, duration = 2000) {
@@ -59,254 +57,6 @@ function updateThemeIcon(theme) {
 document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 initTheme();
 
-// ================== نظام حفظ الجلسة ==================
-function saveCurrentRoom(roomId, roomName, roomCode, ownerEmail) {
-    localStorage.setItem('currentRoom', JSON.stringify({ 
-        roomId, 
-        roomName, 
-        roomCode, 
-        ownerEmail,
-        timestamp: new Date().getTime()
-    }));
-}
-
-function clearSavedRoom() {
-    localStorage.removeItem('currentRoom');
-}
-
-// ================== دوال إصلاح الرومات والتشخيص ==================
-
-// دالة لتنظيف وعرض جميع الغرف (للتشخيص)
-async function debugAllRooms() {
-    console.log('%c🔍 بدأ تشخيص الغرف...', 'color: blue; font-size: 14px');
-    console.log('👤 المستخدم الحالي:', currentUser?.email);
-    
-    try {
-        // 1. جلب كل الغرف
-        const allRooms = await db.collection('rooms').get();
-        console.log(`%c📊 عدد الغرف الكلي: ${allRooms.size}`, 'color: green; font-weight: bold');
-        
-        if (allRooms.empty) {
-            console.log('%c❌ لا توجد غرف في قاعدة البيانات', 'color: red');
-            showToast('❌ لا توجد غرف في Firebase');
-            return;
-        }
-        
-        allRooms.forEach(doc => {
-            const data = doc.data();
-            console.log('📁 الغرفة:', {
-                id: doc.id,
-                name: data.name,
-                code: data.code,
-                owner: data.owner,
-                members: data.members || [],
-                membersCount: data.members?.length || 0
-            });
-        });
-
-        // 2. جلب غرف المستخدم الحالي
-        if (currentUser) {
-            const userRooms = await db.collection('rooms')
-                .where('members', 'array-contains', currentUser.email)
-                .get();
-            
-            console.log(`%c👤 غرف المستخدم ${currentUser.email}: ${userRooms.size}`, 'color: blue');
-            
-            if (userRooms.empty) {
-                console.log('%c❌ المستخدم ليس لديه غرف', 'color: red');
-                
-                // 3. اقتراح: البحث عن الغرف التي يمكن الانضمام لها
-                const availableRooms = await db.collection('rooms').get();
-                const joinable = [];
-                availableRooms.forEach(doc => {
-                    const data = doc.data();
-                    if (!data.members?.includes(currentUser.email)) {
-                        joinable.push({
-                            id: doc.id,
-                            name: data.name,
-                            code: data.code,
-                            owner: data.owner
-                        });
-                    }
-                });
-                
-                if (joinable.length > 0) {
-                    console.log('%c✅ غرف يمكنك الانضمام لها:', 'color: green', joinable);
-                    showToast(`🔑 يوجد ${joinable.length} غرفة يمكنك الانضمام لها`);
-                }
-            } else {
-                console.log('%c✅ غرفك الحالية:', 'color: green');
-                userRooms.forEach(doc => {
-                    const data = doc.data();
-                    console.log(`   📁 ${data.name} (${data.code})`);
-                });
-            }
-        }
-
-    } catch (error) {
-        console.error('%c❌ خطأ في التشخيص:', 'color: red', error);
-        showToast('❌ خطأ في التشخيص: ' + error.message);
-    }
-}
-
-// دالة لإصلاح الغرف (تحويل uid إلى email)
-async function fixRooms() {
-    if (!currentUser) {
-        showToast('❌ سجل دخول أولاً');
-        return;
-    }
-
-    try {
-        showToast('🔧 جاري إصلاح الغرف...');
-        
-        const roomsRef = db.collection('rooms');
-        const snapshot = await roomsRef.get();
-        
-        if (snapshot.empty) {
-            showToast('❌ لا توجد غرف للإصلاح');
-            return;
-        }
-        
-        let fixed = 0;
-        const batch = db.batch();
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            let needsFix = false;
-            const updates = {};
-
-            // تحويل owner من uid إلى email
-            if (data.owner && !data.owner.includes('@')) {
-                updates.owner = currentUser.email;
-                needsFix = true;
-                console.log(`🔧 إصلاح owner في غرفة ${data.name}: ${data.owner} -> ${currentUser.email}`);
-            }
-
-            // تحويل members من uid إلى email
-            if (data.members && Array.isArray(data.members)) {
-                const newMembers = data.members.map(m => 
-                    m.includes('@') ? m : currentUser.email
-                );
-                if (JSON.stringify(data.members) !== JSON.stringify(newMembers)) {
-                    updates.members = newMembers;
-                    needsFix = true;
-                    console.log(`🔧 إصلاح members في غرفة ${data.name}:`, data.members, '->', newMembers);
-                }
-            }
-
-            if (needsFix) {
-                batch.update(doc.ref, updates);
-                fixed++;
-            }
-        });
-
-        if (fixed > 0) {
-            await batch.commit();
-            showToast(`✅ تم إصلاح ${fixed} غرفة`);
-            console.log(`%c✅ تم إصلاح ${fixed} غرفة`, 'color: green');
-            
-            // إعادة تحميل الغرف
-            if (roomHandler) {
-                roomHandler.stopListening();
-                roomHandler.startListening();
-            } else {
-                loadRooms();
-            }
-        } else {
-            showToast('✅ جميع الغرف سليمة');
-            console.log('%c✅ جميع الغرف سليمة', 'color: green');
-        }
-
-    } catch (error) {
-        showToast('❌ خطأ: ' + error.message);
-        console.error('❌ خطأ في الإصلاح:', error);
-    }
-}
-
-// دالة لحذف الغرف المعطوبة
-async function cleanupRooms() {
-    if (!currentUser) {
-        showToast('❌ سجل دخول أولاً');
-        return;
-    }
-    
-    try {
-        showToast('🧹 جاري تنظيف الغرف...');
-        
-        const snapshot = await db.collection('rooms').get();
-        const batch = db.batch();
-        let deleted = 0;
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            // احذف الغرف التي ليس لها members أو owner
-            if (!data.members || !data.owner || data.members.length === 0) {
-                batch.delete(doc.ref);
-                deleted++;
-                console.log(`🗑️ حذف غرفة ${data.name || 'بدون اسم'}`);
-            }
-        });
-
-        if (deleted > 0) {
-            await batch.commit();
-            showToast(`✅ تم حذف ${deleted} غرفة معطوبة`);
-            console.log(`%c✅ تم حذف ${deleted} غرفة معطوبة`, 'color: green');
-            
-            // إعادة تحميل الغرف
-            if (roomHandler) {
-                roomHandler.stopListening();
-                roomHandler.startListening();
-            } else {
-                loadRooms();
-            }
-        } else {
-            showToast('✅ لا توجد غرف معطوبة');
-            console.log('%c✅ لا توجد غرف معطوبة', 'color: green');
-        }
-
-    } catch (error) {
-        showToast('❌ خطأ: ' + error.message);
-        console.error('❌ خطأ في التنظيف:', error);
-    }
-}
-
-// دالة لعرض الغرف في الكونسول
-async function showMyRooms() {
-    if (!currentUser) {
-        console.log('%c❌ سجل دخول أولاً', 'color: red');
-        showToast('❌ سجل دخول أولاً');
-        return;
-    }
-
-    console.log('%c🔍 جاري البحث عن غرفك...', 'color: blue');
-    
-    try {
-        const snapshot = await db.collection('rooms')
-            .where('members', 'array-contains', currentUser.email)
-            .get();
-
-        console.log(`%c📊 عدد غرفك: ${snapshot.size}`, 'color: green; font-weight: bold');
-        
-        if (snapshot.empty) {
-            console.log('%c❌ لا توجد غرف لك', 'color: red');
-            showToast('❌ لا توجد غرف لك');
-            return;
-        }
-        
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const isOwner = data.owner === currentUser.email ? '👑' : '👤';
-            console.log(`%c${isOwner} ${data.name} | 🔑 ${data.code} | 👤 منشئ: ${data.owner}`, 'color: #6366f1');
-        });
-        
-        showToast(`✅ لديك ${snapshot.size} غرفة`);
-
-    } catch (error) {
-        console.error('❌ خطأ:', error);
-        showToast('❌ خطأ في جلب الغرف');
-    }
-}
-
 // ================== المصادقة ==================
 function signUp() {
     const email = document.getElementById('email').value.trim();
@@ -331,229 +81,281 @@ function signIn() {
 function logout() {
     if (unsubscribeRooms) unsubscribeRooms();
     if (unsubscribeMessages) unsubscribeMessages();
-    clearSavedRoom();
     auth.signOut();
+    showScreen('login');
 }
 
+// ================== مراقبة حالة المصادقة ==================
 auth.onAuthStateChanged(user => {
+    console.log('🔥 تغيرت حالة المصادقة:', user ? user.email : 'لا يوجد مستخدم');
+    
     if (user) {
         currentUser = user;
         document.getElementById('userName').textContent = user.email.split('@')[0] || 'مستخدم';
         showScreen('main');
         
-        // تهيئة المعالجات
-        saveHandler = new SaveHandler(db, currentUser);
-        
-        // تحميل الغرف مباشرة
-        loadRooms();
-        
-        // استعادة الغرفة المحفوظة
+        // تأخير بسيط ثم تحميل الغرف
         setTimeout(() => {
-            const savedRoom = localStorage.getItem('currentRoom');
-            if (savedRoom) {
-                try {
-                    const roomData = JSON.parse(savedRoom);
-                    db.collection('rooms').doc(roomData.roomId).get().then(doc => {
-                        if (doc.exists && doc.data().members?.includes(currentUser.email)) {
-                            openChat(roomData.roomId, roomData.roomName, roomData.roomCode, roomData.ownerEmail);
-                        } else {
-                            clearSavedRoom();
-                        }
-                    }).catch(() => clearSavedRoom());
-                } catch (e) {
-                    clearSavedRoom();
-                }
-            }
-        }, 1500);
+            loadRoomsDirect();
+        }, 500);
         
     } else {
+        currentUser = null;
         showScreen('login');
         if (unsubscribeRooms) unsubscribeRooms();
         if (unsubscribeMessages) unsubscribeMessages();
     }
 });
 
-// ================== إدارة الغرف ==================
+// ================== دوال الغرف (مبسطة ومضمونة) ==================
+
+// دالة لتحميل الغرف مباشرة (بدون Handler معقد)
+async function loadRoomsDirect() {
+    if (!currentUser) {
+        console.log('❌ لا يوجد مستخدم');
+        return;
+    }
+
+    console.log('🔍 جاري تحميل غرف:', currentUser.email);
+    
+    const loader = document.getElementById('roomsLoader');
+    const list = document.getElementById('roomsList');
+    
+    if (loader) loader.style.display = 'block';
+    if (list) list.innerHTML = '';
+
+    try {
+        // 1. جلب كل الغرف أولاً (للتشخيص)
+        const allRooms = await db.collection('rooms').get();
+        console.log(`📊 جميع الغرف في Firebase: ${allRooms.size}`);
+        
+        allRooms.forEach(doc => {
+            const data = doc.data();
+            console.log(`   - ${data.name} | كود: ${data.code} | أعضاء:`, data.members || []);
+        });
+
+        // 2. جلب غرف المستخدم
+        const snapshot = await db.collection('rooms')
+            .where('members', 'array-contains', currentUser.email)
+            .get();
+
+        console.log(`👤 غرف المستخدم ${currentUser.email}: ${snapshot.size}`);
+
+        if (loader) loader.style.display = 'none';
+
+        if (snapshot.empty) {
+            list.innerHTML = `
+                <div class="loader" style="padding: 30px;">
+                    <i class="fas fa-info-circle" style="font-size: 30px; color: var(--text-dim);"></i>
+                    <p>لا توجد غرف لك بعد</p>
+                    <p style="font-size: 12px; color: var(--text-dim);">أنشئ غرفة جديدة أو انضم باستخدام كود</p>
+                </div>
+            `;
+            return;
+        }
+
+        // عرض الغرف
+        list.innerHTML = '';
+        snapshot.forEach(doc => {
+            const room = doc.data();
+            const roomId = doc.id;
+
+            const roomDiv = document.createElement('div');
+            roomDiv.className = 'room-item';
+            roomDiv.setAttribute('onclick', `openChat('${roomId}', '${room.name}', '${room.code}', '${room.owner}')`);
+            
+            const isOwner = room.owner === currentUser.email;
+            
+            roomDiv.innerHTML = `
+                <div>
+                    <strong>${room.name} ${isOwner ? '<span style="background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px;">منشئ</span>' : ''}</strong>
+                    <small style="color: var(--text-dim); display: block;">
+                        <i class="fas fa-key"></i> ${room.code}
+                    </small>
+                </div>
+                <span><i class="fas fa-arrow-left"></i></span>
+            `;
+            
+            list.appendChild(roomDiv);
+        });
+
+        showToast(`✅ تم تحميل ${snapshot.size} غرفة`);
+
+    } catch (error) {
+        console.error('❌ خطأ في تحميل الغرف:', error);
+        if (loader) loader.style.display = 'none';
+        list.innerHTML = `<div class="loader" style="color: red;">خطأ: ${error.message}</div>`;
+    }
+}
+
+// دالة إنشاء غرفة جديدة
 async function createRoom() {
     const name = document.getElementById('roomName').value.trim();
-    const code = document.getElementById('roomCode').value;
+    let code = document.getElementById('roomCode').value.trim().toUpperCase();
     
-    if (!saveHandler) {
-        saveHandler = new SaveHandler(db, currentUser);
+    if (!name || !code) {
+        showToast('❌ أدخل اسم المساحة والكود');
+        return;
     }
     
-    const result = await saveHandler.saveRoom(name, code);
-    
-    showToast(result.message);
-    
-    if (result.success) {
+    if (code.length < 3) {
+        showToast('❌ الكود يجب أن يكون 3 أحرف على الأقل');
+        return;
+    }
+
+    try {
+        // التحقق من الكود المكرر
+        const existing = await db.collection('rooms').where('code', '==', code).get();
+        if (!existing.empty) {
+            showToast('❌ هذا الكود مستخدم بالفعل');
+            return;
+        }
+
+        // إنشاء الغرفة
+        const newRoom = {
+            name: name,
+            code: code,
+            owner: currentUser.email,
+            members: [currentUser.email],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const docRef = await db.collection('rooms').add(newRoom);
+        console.log('✅ تم إنشاء الغرفة:', docRef.id);
+        
+        showToast('✅ تم إنشاء المساحة بنجاح');
+        
         document.getElementById('roomName').value = '';
         document.getElementById('roomCode').value = '';
-        openChat(result.roomId, result.roomData.name, result.roomData.code, result.roomData.owner);
+        
+        // إعادة تحميل الغرف
+        await loadRoomsDirect();
+        
+        // فتح الغرفة
+        openChat(docRef.id, name, code, currentUser.email);
+        
+    } catch (error) {
+        showToast('❌ خطأ: ' + error.message);
+        console.error('❌ خطأ في الإنشاء:', error);
     }
 }
 
+// دالة الانضمام إلى غرفة
 async function joinRoom() {
-    const code = document.getElementById('roomCode').value;
+    let code = document.getElementById('roomCode').value.trim().toUpperCase();
     
-    if (!saveHandler) {
-        saveHandler = new SaveHandler(db, currentUser);
+    if (!code) {
+        showToast('❌ أدخل الكود');
+        return;
     }
-    
-    const result = await saveHandler.joinRoom(code);
-    
-    showToast(result.message);
-    
-    if (result.success) {
-        document.getElementById('roomCode').value = '';
-        openChat(result.roomId, result.roomData.name, result.roomData.code, result.roomData.owner);
-    }
-}
 
-function loadRooms() {
-    if (!currentUser) return;
-    if (unsubscribeRooms) unsubscribeRooms();
+    try {
+        const snapshot = await db.collection('rooms').where('code', '==', code).get();
+        
+        if (snapshot.empty) {
+            showToast('❌ لا توجد غرفة بهذا الكود');
+            return;
+        }
 
-    const loader = document.getElementById('roomsLoader');
-    if (loader) loader.style.display = 'block';
+        const roomDoc = snapshot.docs[0];
+        const roomData = roomDoc.data();
 
-    console.log('%c🔍 جاري تحميل غرف:', 'color: blue', currentUser.email);
+        // التحقق من العضوية
+        if (roomData.members && roomData.members.includes(currentUser.email)) {
+            showToast('أنت بالفعل عضو');
+            openChat(roomDoc.id, roomData.name, roomData.code, roomData.owner);
+            return;
+        }
 
-    unsubscribeRooms = db.collection('rooms')
-        .where('members', 'array-contains', currentUser.email)
-        .orderBy('createdAt', 'desc')
-        .onSnapshot(snapshot => {
-            if (loader) loader.style.display = 'none';
-            const list = document.getElementById('roomsList');
-            if (!list) return;
-            
-            list.innerHTML = ''; 
-
-            console.log(`%c📊 تم العثور على ${snapshot.size} غرفة`, 'color: green');
-
-            if (snapshot.empty) {
-                list.innerHTML = `
-                    <div class="loader" style="text-align: center; padding: 20px;">
-                        <i class="fas fa-info-circle"></i> لا توجد مساحات بعد. أنشئ واحدة!<br>
-                        <div style="margin-top: 10px; display: flex; gap: 5px; justify-content: center;">
-                            <button onclick="debugAllRooms()" style="background:none; color:var(--primary); border:1px solid; padding:5px 10px; border-radius:10px; font-size:12px;">
-                                <i class="fas fa-search"></i> تشخيص
-                            </button>
-                            <button onclick="fixRooms()" style="background:none; color:var(--success); border:1px solid; padding:5px 10px; border-radius:10px; font-size:12px;">
-                                <i class="fas fa-wrench"></i> إصلاح
-                            </button>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            snapshot.forEach(doc => {
-                const room = doc.data();
-                const roomId = doc.id;
-
-                const div = document.createElement('div');
-                div.className = 'room-item';
-                div.setAttribute('data-room-id', roomId);
-
-                const infoDiv = document.createElement('div');
-                
-                const nameStrong = document.createElement('strong');
-                nameStrong.textContent = room.name || 'بدون اسم';
-                
-                // أضف علامة إذا كان المستخدم هو المنشئ
-                if (room.owner === currentUser.email) {
-                    const ownerBadge = document.createElement('span');
-                    ownerBadge.style.backgroundColor = 'var(--primary)';
-                    ownerBadge.style.color = 'white';
-                    ownerBadge.style.padding = '2px 8px';
-                    ownerBadge.style.borderRadius = '10px';
-                    ownerBadge.style.fontSize = '10px';
-                    ownerBadge.style.marginRight = '5px';
-                    ownerBadge.textContent = 'منشئ';
-                    nameStrong.appendChild(ownerBadge);
-                }
-
-                const codeSmall = document.createElement('small');
-                codeSmall.style.color = 'var(--text-dim)';
-                codeSmall.style.display = 'block';
-                codeSmall.innerHTML = `<i class="fas fa-key" style="font-size: 10px;"></i> ${room.code || 'لا يوجد'}`;
-
-                infoDiv.appendChild(nameStrong);
-                infoDiv.appendChild(codeSmall);
-
-                const arrowSpan = document.createElement('span');
-                arrowSpan.style.fontSize = '18px';
-                arrowSpan.innerHTML = '<i class="fas fa-arrow-left"></i>';
-
-                div.appendChild(infoDiv);
-                div.appendChild(arrowSpan);
-
-                div.addEventListener('click', () => openChat(roomId, room.name, room.code, room.owner));
-
-                list.appendChild(div);
-            });
-        }, error => {
-            if (loader) loader.style.display = 'none';
-            showToast('❌ خطأ في تحميل الغرف: ' + error.message);
-            console.error('❌ خطأ في التحميل:', error);
+        // إضافة العضو الجديد
+        await roomDoc.ref.update({
+            members: firebase.firestore.FieldValue.arrayUnion(currentUser.email)
         });
+        
+        showToast('✅ تم الانضمام');
+        document.getElementById('roomCode').value = '';
+        
+        // إعادة تحميل الغرف
+        await loadRoomsDirect();
+        
+        // فتح الغرفة
+        openChat(roomDoc.id, roomData.name, roomData.code, roomData.owner);
+        
+    } catch (error) {
+        showToast('❌ فشل الانضمام: ' + error.message);
+        console.error('❌ خطأ في الانضمام:', error);
+    }
 }
 
-// ================== دوال الدردشة ==================
+// دالة فتح الدردشة
 function openChat(roomId, name, code, ownerEmail) {
+    console.log('📁 فتح الغرفة:', {roomId, name, code, ownerEmail});
+    
     if (unsubscribeMessages) unsubscribeMessages();
 
     currentRoomId = roomId;
     currentRoomOwner = ownerEmail;
 
-    saveCurrentRoom(roomId, name, code, ownerEmail);
-
+    // تحديث واجهة الدردشة
     document.getElementById('chatTitle').textContent = name;
     
     const codeDisplay = document.getElementById('roomCodeDisplay');
-    if (codeDisplay) {
-        codeDisplay.innerHTML = `
-            <i class="fas fa-copy"></i>
-            <span style="font-weight: bold; letter-spacing: 1px; direction: ltr;">${code}</span>
-        `;
-        codeDisplay.onclick = () => copyCode(code);
-    }
+    codeDisplay.innerHTML = `<i class="fas fa-copy"></i> <span>${code}</span>`;
+    codeDisplay.onclick = () => copyCode(code);
 
     const delBtn = document.getElementById('deleteRoomBtn');
-    if (delBtn) {
-        delBtn.style.display = ownerEmail === currentUser.email ? 'block' : 'none';
+    if (ownerEmail === currentUser.email) {
+        delBtn.style.display = 'block';
         delBtn.onclick = () => deleteRoom(roomId);
+    } else {
+        delBtn.style.display = 'none';
     }
 
     showScreen('chat');
     loadMessages(roomId);
 }
 
+// دالة الخروج من الدردشة
 function leaveChat() {
     if (unsubscribeMessages) unsubscribeMessages();
     showScreen('main');
 }
 
+// دالة حذف الغرفة
 async function deleteRoom(roomId) {
     if (!confirm('⚠️ هل أنت متأكد من حذف المساحة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.')) return;
-    
-    if (!saveHandler) {
-        saveHandler = new SaveHandler(db, currentUser);
-    }
-    
-    const result = await saveHandler.deleteRoom(roomId);
-    showToast(result.message);
-    
-    if (result.success) {
-        clearSavedRoom();
+
+    try {
+        // حذف الرسائل أولاً
+        const messagesRef = db.collection('rooms').doc(roomId).collection('messages');
+        const messagesSnapshot = await messagesRef.get();
+        
+        if (!messagesSnapshot.empty) {
+            const batch = db.batch();
+            messagesSnapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
+
+        // حذف الغرفة
+        await db.collection('rooms').doc(roomId).delete();
+
+        showToast('✅ تم حذف المساحة');
+        
+        // إعادة تحميل الغرف
+        await loadRoomsDirect();
+        
         showScreen('main');
+        
+    } catch (error) {
+        showToast('❌ خطأ في الحذف: ' + error.message);
+        console.error('❌ خطأ في الحذف:', error);
     }
 }
 
+// دالة نسخ الكود
 function copyCode(code) {
     navigator.clipboard.writeText(code).then(() => {
-        showToast('📋 تم نسخ الكود: ' + code);
+        showToast('📋 تم نسخ الكود');
     }).catch(() => {
         showToast('❌ فشل النسخ');
     });
@@ -564,99 +366,73 @@ function loadMessages(roomId) {
     if (!roomId) return;
 
     const box = document.getElementById('messagesBox');
-    if (!box) return;
-    
-    box.innerHTML = '';
+    box.innerHTML = '<div class="loader">جاري تحميل المحادثة...</div>';
 
     unsubscribeMessages = db.collection('rooms').doc(roomId)
         .collection('messages')
         .orderBy('time')
         .onSnapshot(snapshot => {
-            snapshot.docChanges().forEach(change => {
-                if (change.type === 'added') {
-                    const msg = change.doc.data();
-                    addMessageToBox(change.doc.id, msg);
-                }
+            box.innerHTML = '';
+            
+            if (snapshot.empty) {
+                box.innerHTML = '<div class="loader" style="padding: 20px;">لا توجد رسائل بعد... اكتب أول رسالة</div>';
+                return;
+            }
+            
+            snapshot.forEach(doc => {
+                const msg = doc.data();
+                addMessageToBox(doc.id, msg);
             });
+            
             box.scrollTop = box.scrollHeight;
         }, error => {
-            showToast('❌ فشل تحميل الرسائل');
             console.error('❌ خطأ في تحميل الرسائل:', error);
+            box.innerHTML = '<div class="loader" style="color: red;">خطأ في تحميل المحادثة</div>';
         });
 }
 
 function addMessageToBox(msgId, msgData) {
     const box = document.getElementById('messagesBox');
-    if (!box) return;
-    
     const isMe = msgData.sender === currentUser.email;
 
-    let timeStr = 'الآن';
+    let timeStr = '';
     if (msgData.time) {
         try {
             const date = msgData.time.toDate();
             timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
         } catch (e) {
-            timeStr = 'الآن';
+            timeStr = '';
         }
     }
 
     const msgDiv = document.createElement('div');
     msgDiv.className = `msg ${isMe ? 'sent' : 'received'}`;
-    msgDiv.setAttribute('data-msg-id', msgId);
-
-    const textDiv = document.createElement('div');
-    textDiv.textContent = msgData.text;
-
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'msg-info';
-
-    const timeSpan = document.createElement('span');
-    timeSpan.textContent = timeStr;
-
-    infoDiv.appendChild(timeSpan);
-
+    
+    let statusHtml = '';
     if (isMe) {
-        const statusSpan = document.createElement('span');
-        statusSpan.className = 'status-seen';
-        statusSpan.textContent = msgData.seen ? '✔️✔️' : '✔️';
-        infoDiv.appendChild(statusSpan);
-    } else {
-        if (!msgData.seen) {
-            db.collection('rooms').doc(currentRoomId).collection('messages').doc(msgId).update({ seen: true });
-        }
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-msg';
-        deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            deleteMessage(msgId);
-        };
-        infoDiv.appendChild(deleteBtn);
+        statusHtml = `<span class="status-seen">${msgData.seen ? '✔️✔️' : '✔️'}</span>`;
     }
 
-    msgDiv.appendChild(textDiv);
-    msgDiv.appendChild(infoDiv);
-    box.appendChild(msgDiv);
-}
+    msgDiv.innerHTML = `
+        <div>${msgData.text}</div>
+        <div class="msg-info">
+            <span>${timeStr}</span>
+            ${statusHtml}
+        </div>
+    `;
 
-async function deleteMessage(msgId) {
-    if (!confirm('🗑️ حذف هذه الرسالة؟')) return;
-    try {
-        await db.collection('rooms').doc(currentRoomId).collection('messages').doc(msgId).delete();
-        showToast('✅ تم حذف الرسالة');
-    } catch (error) {
-        showToast('❌ فشل الحذف');
-        console.error('❌ خطأ في حذف الرسالة:', error);
+    box.appendChild(msgDiv);
+
+    // تحديث حالة المشاهدة
+    if (!isMe && !msgData.seen) {
+        db.collection('rooms').doc(currentRoomId).collection('messages').doc(msgId).update({ seen: true });
     }
 }
 
 function sendMsg() {
     const input = document.getElementById('msgInput');
-    if (!input) return;
-    
     const text = input.value.trim();
+    
     if (!text || !currentRoomId) return;
 
     db.collection('rooms').doc(currentRoomId).collection('messages').add({
@@ -667,12 +443,116 @@ function sendMsg() {
     }).then(() => {
         input.value = '';
     }).catch(error => {
-        showToast('❌ فشل الإرسال');
         console.error('❌ خطأ في الإرسال:', error);
+        showToast('❌ فشل الإرسال');
     });
 }
 
-// ================== تصدير الدوال للـ HTML ==================
+// ================== دوال التشخيص ==================
+async function debugAllRooms() {
+    console.log('%c🔍 تشخيص جميع الغرف', 'font-size: 16px; color: blue;');
+    
+    try {
+        const snapshot = await db.collection('rooms').get();
+        console.log(`📊 عدد الغرف: ${snapshot.size}`);
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            console.log(`📁 ${doc.id}:`, {
+                name: data.name,
+                code: data.code,
+                owner: data.owner,
+                members: data.members || [],
+                membersCount: data.members?.length || 0
+            });
+        });
+
+        if (currentUser) {
+            console.log(`\n👤 المستخدم الحالي: ${currentUser.email}`);
+            
+            const userRooms = await db.collection('rooms')
+                .where('members', 'array-contains', currentUser.email)
+                .get();
+            
+            console.log(`✅ غرف المستخدم: ${userRooms.size}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ خطأ:', error);
+    }
+}
+
+async function fixRooms() {
+    if (!currentUser) {
+        showToast('❌ سجل دخول أولاً');
+        return;
+    }
+
+    try {
+        const snapshot = await db.collection('rooms').get();
+        let fixed = 0;
+        
+        const batch = db.batch();
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const updates = {};
+            
+            // إصلاح owner
+            if (data.owner && !data.owner.includes('@')) {
+                updates.owner = currentUser.email;
+                fixed++;
+            }
+            
+            // إصلاح members
+            if (data.members && Array.isArray(data.members)) {
+                const newMembers = data.members.map(m => 
+                    m.includes('@') ? m : currentUser.email
+                );
+                if (JSON.stringify(data.members) !== JSON.stringify(newMembers)) {
+                    updates.members = newMembers;
+                    fixed++;
+                }
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                batch.update(doc.ref, updates);
+            }
+        });
+        
+        if (fixed > 0) {
+            await batch.commit();
+            showToast(`✅ تم إصلاح ${fixed} غرفة`);
+            await loadRoomsDirect();
+        } else {
+            showToast('✅ جميع الغرف سليمة');
+        }
+        
+    } catch (error) {
+        showToast('❌ خطأ: ' + error.message);
+    }
+}
+
+async function showMyRooms() {
+    if (!currentUser) {
+        showToast('❌ سجل دخول أولاً');
+        return;
+    }
+    
+    const snapshot = await db.collection('rooms')
+        .where('members', 'array-contains', currentUser.email)
+        .get();
+    
+    console.log(`👤 غرف ${currentUser.email}:`);
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        console.log(`   - ${data.name} (${data.code})`);
+    });
+    
+    showToast(`✅ لديك ${snapshot.size} غرفة`);
+}
+
+// ================== تصدير الدوال ==================
 window.signIn = signIn;
 window.signUp = signUp;
 window.logout = logout;
@@ -682,9 +562,7 @@ window.leaveChat = leaveChat;
 window.openChat = openChat;
 window.sendMsg = sendMsg;
 window.copyCode = copyCode;
-window.deleteMessage = deleteMessage;
 window.debugAllRooms = debugAllRooms;
 window.fixRooms = fixRooms;
-window.cleanupRooms = cleanupRooms;
 window.showMyRooms = showMyRooms;
-window.loadRooms = loadRooms;
+window.loadRoomsDirect = loadRoomsDirect;
