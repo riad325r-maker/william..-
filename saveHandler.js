@@ -1,4 +1,4 @@
-// saveHandler.js - ملف منفصل لإدارة الحفظ في Firebase
+// saveHandler.js - معالج الحفظ في Firebase
 
 class SaveHandler {
     constructor(db, currentUser) {
@@ -9,7 +9,6 @@ class SaveHandler {
     // حفظ غرفة جديدة
     async saveRoom(roomName, roomCode) {
         try {
-            // تنظيف الكود
             roomCode = roomCode.trim().toUpperCase().replace(/\s+/g, '');
             
             if (!roomName || !roomCode) {
@@ -20,7 +19,6 @@ class SaveHandler {
                 return { success: false, message: 'الكود يجب أن يكون 3 أحرف على الأقل' };
             }
 
-            // التحقق من الكود المكرر
             const existing = await this.db.collection('rooms')
                 .where('code', '==', roomCode)
                 .get();
@@ -29,29 +27,27 @@ class SaveHandler {
                 return { success: false, message: 'هذا الكود مستخدم بالفعل' };
             }
 
-            // حفظ الغرفة
             const docRef = await this.db.collection('rooms').add({
                 name: roomName,
                 code: roomCode,
-                owner: this.currentUser.uid,
-                members: [this.currentUser.uid],
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                owner: this.currentUser.email,
+                members: [this.currentUser.email],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
             return { 
                 success: true, 
-                message: 'تم الحفظ بنجاح',
+                message: '✅ تم الحفظ بنجاح',
                 roomId: docRef.id,
                 roomData: {
                     name: roomName,
                     code: roomCode,
-                    owner: this.currentUser.uid
+                    owner: this.currentUser.email
                 }
             };
             
         } catch (error) {
-            return { success: false, message: 'خطأ: ' + error.message };
+            return { success: false, message: '❌ خطأ: ' + error.message };
         }
     }
 
@@ -65,44 +61,45 @@ class SaveHandler {
                 .get();
 
             if (snapshot.empty) {
-                return { success: false, message: 'لا توجد غرفة بهذا الكود' };
+                return { success: false, message: '❌ لا توجد غرفة بهذا الكود' };
             }
 
             const roomDoc = snapshot.docs[0];
             const roomData = roomDoc.data();
 
-            if (roomData.members.includes(this.currentUser.uid)) {
+            if (roomData.members && roomData.members.includes(this.currentUser.email)) {
                 return { 
                     success: true, 
                     message: 'أنت عضو بالفعل',
                     roomId: roomDoc.id,
-                    roomData: roomData
+                    roomData: roomData,
+                    alreadyMember: true
                 };
             }
 
             await roomDoc.ref.update({
-                members: firebase.firestore.FieldValue.arrayUnion(this.currentUser.uid),
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                members: firebase.firestore.FieldValue.arrayUnion(this.currentUser.email)
             });
 
             return { 
                 success: true, 
-                message: 'تم الانضمام',
+                message: '✅ تم الانضمام',
                 roomId: roomDoc.id,
-                roomData: roomData
+                roomData: roomData,
+                alreadyMember: false
             };
             
         } catch (error) {
-            return { success: false, message: 'خطأ: ' + error.message };
+            return { success: false, message: '❌ فشل الانضمام: ' + error.message };
         }
     }
 
-    // جلب كل غرف المستخدم
+    // جلب غرف المستخدم
     async getUserRooms() {
         try {
             const snapshot = await this.db.collection('rooms')
-                .where('members', 'array-contains', this.currentUser.uid)
-                .orderBy('lastUpdated', 'desc')
+                .where('members', 'array-contains', this.currentUser.email)
+                .orderBy('createdAt', 'desc')
                 .get();
 
             const rooms = [];
@@ -113,7 +110,7 @@ class SaveHandler {
                 });
             });
 
-            return { success: true, rooms: rooms };
+            return { success: true, rooms };
             
         } catch (error) {
             return { success: false, message: error.message };
@@ -131,37 +128,21 @@ class SaveHandler {
 
             const roomData = roomDoc.data();
             
-            // التحقق من أن المستخدم هو المنشئ
-            if (roomData.owner !== this.currentUser.uid) {
+            if (roomData.owner !== this.currentUser.email) {
                 return { success: false, message: 'أنت لست منشئ هذه الغرفة' };
             }
 
-            // حذف الرسائل أولاً
             const messages = await this.db.collection('rooms').doc(roomId).collection('messages').get();
             const batch = this.db.batch();
             messages.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
 
-            // حذف الغرفة
             await this.db.collection('rooms').doc(roomId).delete();
 
-            return { success: true, message: 'تم الحذف' };
+            return { success: true, message: '✅ تم حذف الغرفة' };
             
         } catch (error) {
-            return { success: false, message: error.message };
+            return { success: false, message: '❌ خطأ: ' + error.message };
         }
     }
-
-    // تحديث بيانات الغرفة
-    async updateRoom(roomId, newData) {
-        try {
-            await this.db.collection('rooms').doc(roomId).update({
-                ...newData,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            return { success: true, message: 'تم التحديث' };
-        } catch (error) {
-            return { success: false, message: error.message };
-        }
-    }
-              }
+}
