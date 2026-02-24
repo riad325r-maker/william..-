@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>William's Rooms</title>
+    <title>William's Rooms - الدردشة الآمنة</title>
     
     <!-- الأيقونات والثيم -->
     <link rel="icon" type="image/png" href="https://files.catbox.moe/oup7oq.png">
@@ -115,15 +115,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ========== شاشة الترحيب ========== */
-        .welcome-screen {
-            background: var(--gradient-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
         /* ========== الهيدر ========== */
         .chat-header {
             display: flex;
@@ -136,7 +127,6 @@
             top: 0;
             z-index: 100;
             backdrop-filter: blur(10px);
-            background: rgba(var(--card-rgb), 0.9);
         }
 
         .chat-header button {
@@ -477,34 +467,6 @@
             border-color: var(--primary);
         }
 
-        /* ========== شارات الحالة ========== */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 8px;
-            border-radius: var(--radius-full);
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        .status-online {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-        }
-
-        .status-offline {
-            background: var(--bg-secondary);
-            color: var(--text-muted);
-        }
-
-        .typing-indicator {
-            padding: 8px 16px;
-            color: var(--text-muted);
-            font-size: 12px;
-            font-style: italic;
-        }
-
         /* ========== التحميل ========== */
         .loading {
             text-align: center;
@@ -597,7 +559,7 @@
         <!-- الهيدر -->
         <div class="chat-header">
             <div class="dropdown" style="position: relative;">
-                <button><i class="fas fa-user-circle"></i></button>
+                <button onclick="ui.toggleUserDropdown()"><i class="fas fa-user-circle"></i></button>
                 <div style="position: absolute; top: 50px; left: 0; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-lg); border: 1px solid var(--border); min-width: 200px; z-index: 1000; display: none;" id="userDropdown">
                     <div style="padding: 16px; border-bottom: 1px solid var(--border);">
                         <p style="font-weight: 700;" id="userEmailDisplay"></p>
@@ -666,11 +628,6 @@
                 <span class="room-badge badge-code" id="roomCode" onclick="utils.copyRoomCode()" style="cursor: pointer;">نسخ</span>
             </div>
             <button onclick="chat.showInfo()"><i class="fas fa-info-circle"></i></button>
-        </div>
-
-        <!-- مؤشر الكتابة -->
-        <div id="typingIndicator" class="typing-indicator" style="display: none;">
-            <i class="fas fa-pencil-alt"></i> شخص يكتب...
         </div>
 
         <!-- منطقة الرسائل -->
@@ -762,9 +719,8 @@
     };
     let messagesUnsubscribe = null;
     let roomsUnsubscribe = null;
-    let typingTimeout = null;
     let isSending = false;
-    let selectedRoomType = 'code'; // code أو private
+    let selectedRoomType = 'code';
 
     // ========== الأدوات المساعدة ==========
     const utils = {
@@ -880,7 +836,6 @@
             try {
                 const userCredential = await authFirebase.createUserWithEmailAndPassword(email, password);
                 
-                // حفظ المستخدم في Firestore
                 await db.collection('users').doc(userCredential.user.uid).set({
                     email: email,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -896,7 +851,6 @@
         },
 
         logout: async () => {
-            // تنظيف الاشتراكات
             if (roomsUnsubscribe) roomsUnsubscribe();
             if (messagesUnsubscribe) messagesUnsubscribe();
             
@@ -919,7 +873,6 @@
                     currentRoom.id = null;
                     ui.showScreen('login');
                     
-                    // تنظيف الحقول
                     ['loginEmail', 'loginPassword', 'signupEmail', 'signupPassword', 'confirmPassword'].forEach(id => {
                         const el = document.getElementById(id);
                         if (el) el.value = '';
@@ -941,7 +894,6 @@
             roomsUnsubscribe = db.collection('rooms')
                 .where('members', 'array-contains', currentUser.uid)
                 .orderBy('lastActivity', 'desc')
-                .orderBy('createdAt', 'desc')
                 .onSnapshot((snapshot) => {
                     roomsList.innerHTML = '';
                     
@@ -1012,7 +964,6 @@
             }
 
             try {
-                // التحقق من عدم تكرار الكود
                 const existing = await db.collection('rooms')
                     .where('code', '==', code)
                     .where('type', '==', 'code')
@@ -1038,7 +989,6 @@
                 ui.hideCreateRoomModal();
                 utils.showAlert('تم إنشاء الغرفة بنجاح!', 'success');
                 
-                // فتح الغرفة مباشرة
                 chat.open(roomRef.id, { ...roomData, id: roomRef.id });
 
             } catch (error) {
@@ -1059,7 +1009,6 @@
             }
 
             try {
-                // البحث عن المستخدم
                 const usersSnapshot = await db.collection('users')
                     .where('email', '==', email)
                     .get();
@@ -1071,16 +1020,13 @@
                 const otherUser = usersSnapshot.docs[0];
                 const otherUserId = otherUser.id;
 
-                // إنشاء ID موحد للغرفة (مرتب أبجدياً)
                 const sortedIds = [currentUser.uid, otherUserId].sort();
                 const roomId = `private_${sortedIds[0]}_${sortedIds[1]}`;
 
-                // التحقق من وجود الغرفة
                 const roomRef = db.collection('rooms').doc(roomId);
                 const roomDoc = await roomRef.get();
 
                 if (!roomDoc.exists) {
-                    // إنشاء غرفة جديدة
                     await roomRef.set({
                         name: `دردشة خاصة`,
                         code: roomId.substring(0, 8),
@@ -1089,16 +1035,13 @@
                         owner: currentUser.uid,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-                        createdBy: currentUser.email,
-                        participant1: currentUser.uid,
-                        participant2: otherUserId
+                        createdBy: currentUser.email
                     });
                 }
 
                 ui.hideCreateRoomModal();
                 utils.showAlert('تم بدء الدردشة الخاصة!', 'success');
                 
-                // فتح الغرفة
                 chat.open(roomId, { 
                     name: `خاص مع ${email}`, 
                     code: 'خاص', 
@@ -1123,7 +1066,6 @@
             resultContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري البحث...</div>';
 
             try {
-                // البحث عن الغرف العامة فقط (type = 'code')
                 const snapshot = await db.collection('rooms')
                     .where('code', '==', code)
                     .where('type', '==', 'code')
@@ -1171,17 +1113,14 @@
 
                 const roomData = roomDoc.data();
 
-                // التحقق من نوع الغرفة
                 if (roomData.type !== 'code') {
                     return utils.showAlert('لا يمكن الانضمام إلى هذه الغرفة', 'error');
                 }
 
-                // التحقق إذا كان العضو موجوداً بالفعل
                 if (roomData.members && roomData.members.includes(currentUser.uid)) {
                     utils.showAlert('أنت عضو بالفعل', 'warning');
                     chat.open(roomId, roomData);
                 } else {
-                    // إضافة العضو الجديد
                     await roomRef.update({
                         members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
                         lastActivity: firebase.firestore.FieldValue.serverTimestamp()
@@ -1191,7 +1130,6 @@
                     chat.open(roomId, roomData);
                 }
 
-                // تنظيف البحث
                 document.getElementById('searchResultContainer').innerHTML = '';
                 document.getElementById('searchRoomCode').value = '';
 
@@ -1218,7 +1156,6 @@
                 type: roomData.type || 'code'
             };
 
-            // تحديث واجهة المستخدم
             document.getElementById('chatTitle').textContent = currentRoom.name;
             
             const roomCodeEl = document.getElementById('roomCode');
@@ -1274,7 +1211,6 @@
                         chat.displayMessage(msg);
                     });
 
-                    // التمرير لآخر رسالة
                     messagesBox.scrollTop = messagesBox.scrollHeight;
                 }, (error) => {
                     console.error('Error loading messages:', error);
@@ -1295,7 +1231,6 @@
                 timeStr = date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
             }
 
-            // إضافة اسم المرسل في الغرف الجماعية
             let senderName = '';
             if (currentRoom.type === 'code' && !isSent && msg.senderEmail) {
                 senderName = `<div style="font-size: 11px; opacity: 0.7; margin-bottom: 2px;">${utils.escapeHtml(msg.senderEmail.split('@')[0])}</div>`;
@@ -1322,7 +1257,6 @@
             sendBtn.disabled = true;
 
             try {
-                // إرسال الرسالة
                 await db.collection('rooms').doc(currentRoom.id)
                     .collection('messages')
                     .add({
@@ -1332,7 +1266,6 @@
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                // تحديث آخر نشاط في الغرفة
                 await db.collection('rooms').doc(currentRoom.id).update({
                     lastActivity: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -1352,13 +1285,7 @@
 
         showInfo: () => {
             const members = currentRoom.type === 'private' ? 'شخصان' : 'مجموعة';
-            const info = `
-                🏠 ${currentRoom.name}
-                📌 النوع: ${currentRoom.type === 'private' ? 'دردشة خاصة' : 'غرفة بكود'}
-                🔑 الكود: ${currentRoom.code}
-                👥 الأعضاء: ${members}
-            `;
-            alert(info);
+            alert(`🏠 ${currentRoom.name}\n📌 ${currentRoom.type === 'private' ? 'خاص' : 'عام'}\n🔑 ${currentRoom.code}\n👥 ${members}`);
         }
     };
 
@@ -1396,7 +1323,6 @@
 
         hideCreateRoomModal: () => {
             document.getElementById('createRoomModal').classList.remove('active');
-            // تنظيف الحقول
             document.getElementById('newRoomName').value = '';
             document.getElementById('newRoomCode').value = '';
             document.getElementById('privateUserEmail').value = '';
@@ -1434,7 +1360,6 @@
             body.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
             
-            // تحديث الأيقونة
             const themeIcon = document.getElementById('themeIcon');
             if (themeIcon) {
                 themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
@@ -1454,13 +1379,11 @@
         toggleUserDropdown: () => {
             const dropdown = document.getElementById('userDropdown');
             if (dropdown) {
-                const isVisible = dropdown.style.display === 'block';
-                dropdown.style.display = isVisible ? 'none' : 'block';
+                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
             }
         }
     };
 
-    // ========== إغلاق القوائم المنسدلة عند النقر خارجها ==========
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('userDropdown');
         if (dropdown && !e.target.closest('.dropdown')) {
@@ -1468,13 +1391,11 @@
         }
     });
 
-    // ========== بدء التطبيق ==========
     window.addEventListener('load', () => {
         ui.initTheme();
         auth.init();
     });
 
-    // ========== تنظيف الاشتراكات عند الإغلاق ==========
     window.addEventListener('beforeunload', () => {
         if (roomsUnsubscribe) roomsUnsubscribe();
         if (messagesUnsubscribe) messagesUnsubscribe();
@@ -1483,38 +1404,25 @@
 
 <!--
 ====================================================================
-🚀 قواعد أمان Firebase (انسخها والصقها في Firebase Console)
+🚀 قواعد أمان Firebase
 ====================================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // قواعد المستخدمين
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // قواعد الغرف
     match /rooms/{roomId} {
-      // السماح بقراءة الغرفة إذا كان المستخدم مسجل دخول
       allow read: if request.auth != null;
-      
-      // السماح بإنشاء غرفة جديدة
       allow create: if request.auth != null;
-      
-      // السماح بالتحديث إذا كان المستخدم عضواً في الغرفة
       allow update: if request.auth != null && 
         request.auth.uid in resource.data.members;
-      
-      // السماح بالحذف فقط للمالك
       allow delete: if request.auth != null && 
         resource.data.owner == request.auth.uid;
       
-      // قواعد الرسائل
       match /messages/{messageId} {
-        // السماح بقراءة وكتابة الرسائل إذا كان المستخدم عضواً في الغرفة
         allow read, write: if request.auth != null && 
           request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.members;
       }
@@ -1525,4 +1433,4 @@ service cloud.firestore {
 -->
 
 </body>
-    </html>
+                                                                                </html>
